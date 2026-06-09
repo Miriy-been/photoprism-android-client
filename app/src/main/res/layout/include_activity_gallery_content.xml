@@ -73,6 +73,19 @@
         tools:targetApi="o"
         tools:visibility="visible" />
 
+    <!-- Upload FAB - 快速上传入口 -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/upload_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:contentDescription="@string/upload"
+        android:tooltipText="@string/upload"
+        android:visibility="visible"
+        app:srcCompat="@drawable/ic_upload_white"
+        tools:targetApi="o" />
+
     <com.google.android.material.search.SearchView
         android:id="@+id/search_view"
         android:layout_width="match_parent"

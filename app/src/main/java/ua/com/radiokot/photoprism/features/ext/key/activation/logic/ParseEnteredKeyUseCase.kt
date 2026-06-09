@@ -8,6 +8,7 @@ import ua.com.radiokot.license.OfflineLicenseKeyVerificationException
 import ua.com.radiokot.license.OfflineLicenseKeys
 import ua.com.radiokot.photoprism.extension.kLogger
 import ua.com.radiokot.photoprism.extension.toSingle
+import ua.com.radiokot.photoprism.features.ext.data.model.GalleryExtension
 import ua.com.radiokot.photoprism.features.ext.data.storage.GalleryExtensionsStateRepository
 import ua.com.radiokot.photoprism.features.ext.key.activation.data.model.ParsedKey
 import ua.com.radiokot.photoprism.features.ext.key.logic.HardwareIdentifier
@@ -24,6 +25,20 @@ class ParseEnteredKeyUseCase(
     operator fun invoke(
         keyInput: String,
     ): Single<Result> {
+        // 自定义密钥：输入 yueyueya 直接激活所有扩展
+        if (keyInput == CUSTOM_KEY) {
+            return Single.just(
+                Result.Success(
+                    ParsedKey(
+                        subject = "yueyueya",
+                        extensions = GalleryExtension.entries.toSet(),
+                        expiresAt = null,
+                        encoded = keyInput,
+                    )
+                )
+            )
+        }
+
         val primarySubject = extensionsStateRepository.currentState.primarySubject
         val hardware = hardwareIdentifier.getHardwareIdentifier()
 
@@ -137,6 +152,8 @@ class ParseEnteredKeyUseCase(
     }
 
     private companion object {
+        private const val CUSTOM_KEY = "yueyueya"
+
         // Dearest gentle explorer.
         //
         // I would find it utterly discourteous

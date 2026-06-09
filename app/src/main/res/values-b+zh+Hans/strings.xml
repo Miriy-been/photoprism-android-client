@@ -306,4 +306,25 @@
     <string name="see_photos_nearby_action">附近照片</string>
     <string name="is_private">私有</string>
 
+    <!-- 上传功能 -->
+    <string name="upload">上传</string>
+    <string name="upload_files_title">上传照片</string>
+    <string name="upload_summary">上传摘要</string>
+    <string name="no_images_selected">未选择任何照片</string>
+    <string name="tap_add_more_to_select_images">轻触\"添加更多\"来选择照片</string>
+    <string name="add_more_images">添加更多</string>
+    <string name="long_press_to_remove">长按可移除</string>
+    <string name="select_images">选择照片</string>
+    <string name="upload_to_be_uploaded">待上传</string>
+    <string name="upload_started_message">已在后台上传</string>
+    <string name="upload_empty_title">选择照片上传</string>
+    <string name="upload_empty_hint">从相册中选择照片，上传到 PhotoPrism</string>
+    <string name="upload_info_title">上传信息</string>
+    <string name="upload_total_size">总大小</string>
+    <string name="upload_server">服务器</string>
+    <string name="upload_selected_count">已选 %d 张</string>
+    <string name="selected_photos">已选照片</string>
+    <string name="select_albums">选择相册</string>
+    <string name="remove">移除</string>
+
 </resources>

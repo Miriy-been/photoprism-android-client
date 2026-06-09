@@ -210,6 +210,12 @@
         </activity>
 
         <activity
+            android:name=".features.upload.view.UploadFilesActivity"
+            android:exported="false"
+            android:label="@string/upload_files_title"
+            android:resizeableActivity="true" />
+
+        <activity
             android:name=".features.albums.view.DestinationAlbumSelectionActivity"
             android:exported="false"
             android:label="@string/albums"

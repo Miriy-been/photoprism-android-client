@@ -563,6 +563,10 @@ class GalleryViewModel(
         )
     }
 
+    fun onUploadClicked() {
+        eventsSubject.onNext(Event.OpenUpload)
+    }
+
     fun onDoneMultipleSelectionClicked() {
         val currentState = this.currentState
         check(currentState is State.Selecting.ForOtherApp && currentState.allowMultiple) {
@@ -865,6 +869,8 @@ class GalleryViewModel(
          * Call [onWebViewerHandledRedirect] on successful result.
          */
         class OpenWebViewerForRedirectHandling(val url: String) : Event
+
+        object OpenUpload : Event
     }
 
     sealed interface Error {

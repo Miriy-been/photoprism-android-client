@@ -68,6 +68,7 @@ import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryViewModel
 import ua.com.radiokot.photoprism.features.labels.view.LabelsActivity
 import ua.com.radiokot.photoprism.features.map.view.MapActivity
 import ua.com.radiokot.photoprism.features.prefs.view.PreferencesActivity
+import ua.com.radiokot.photoprism.features.upload.view.UploadFilesActivity
 import ua.com.radiokot.photoprism.features.viewer.view.MediaViewerActivity
 import ua.com.radiokot.photoprism.features.webview.view.WebViewActivity
 import ua.com.radiokot.photoprism.features.welcome.data.storage.WelcomeScreenPreferences
@@ -439,6 +440,10 @@ class GalleryActivity : BaseActivity() {
                         url = event.url,
                     )
                 }
+
+                GalleryViewModel.Event.OpenUpload -> {
+                    openUpload()
+                }
             }
 
             log.debug {
@@ -490,6 +495,13 @@ class GalleryActivity : BaseActivity() {
             }
         } else {
             view.doneSelectingFab.hide()
+        }
+
+        // Upload FAB: visible only in Viewing state
+        if (state is GalleryViewModel.State.Viewing) {
+            view.uploadFab.show()
+        } else {
+            view.uploadFab.hide()
         }
 
         log.debug {
@@ -813,6 +825,10 @@ class GalleryActivity : BaseActivity() {
             viewModel.onDoneMultipleSelectionClicked()
         }
 
+        view.uploadFab.setOnClickListener {
+            viewModel.onUploadClicked()
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
             ShareSheetShareEventReceiver.shareEvents.subscribe(this) {
                 viewModel.onDownloadedFilesShared()
@@ -939,6 +955,10 @@ class GalleryActivity : BaseActivity() {
 
     private fun openMap() {
         startActivity(Intent(this, MapActivity::class.java))
+    }
+
+    private fun openUpload() {
+        startActivity(Intent(this, UploadFilesActivity::class.java))
     }
 
     private fun openAlbums(

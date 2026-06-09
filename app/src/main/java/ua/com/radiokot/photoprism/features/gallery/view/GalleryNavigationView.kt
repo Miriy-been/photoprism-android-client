@@ -85,6 +85,9 @@ class GalleryNavigationView(
         navigationMenu.findItem(R.id.folders)
             .setOnMenuItemClickListener(getClickListener(viewModel::onFoldersClicked))
 
+        navigationMenu.findItem(R.id.upload)
+            .setOnMenuItemClickListener(getClickListener(viewModel::onUploadClicked))
+
         navigationMenu.findItem(R.id.preferences)
             .setOnMenuItemClickListener(getClickListener(viewModel::onPreferencesClicked))
     }
