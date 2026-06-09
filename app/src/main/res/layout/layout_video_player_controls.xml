@@ -42,7 +42,7 @@
         android:layout_marginStart="6dp"
         android:layout_marginBottom="4dp"
         android:includeFontPadding="false"
-        android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+        android:textAppearance="@style/TextAppearance.Wabi.Caption2"
         android:textColor="?colorOnSecondaryContainer"
         tools:text="00:05" />
 
@@ -54,7 +54,7 @@
         android:layout_toEndOf="@id/exo_position"
         android:includeFontPadding="false"
         android:text=" / "
-        android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+        android:textAppearance="@style/TextAppearance.Wabi.Caption2"
         android:textColor="?colorSecondary"
         tools:ignore="HardcodedText" />
 
@@ -65,7 +65,7 @@
         android:layout_alignTop="@id/exo_position"
         android:layout_toEndOf="@id/le_slash"
         android:includeFontPadding="false"
-        android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+        android:textAppearance="@style/TextAppearance.Wabi.Caption2"
         android:textColor="?colorSecondary"
         tools:text="00:55" />
 

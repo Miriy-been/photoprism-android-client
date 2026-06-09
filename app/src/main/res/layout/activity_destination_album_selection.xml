@@ -27,7 +27,7 @@
             android:importantForAutofill="no"
             android:inputType="text|textCapSentences"
             android:paddingVertical="8dp"
-            android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+            android:textAppearance="@style/TextAppearance.Wabi.Body" />
     </com.google.android.material.appbar.MaterialToolbar>
 
     <ua.com.radiokot.photoprism.view.ThemedSwipeRefreshLayout

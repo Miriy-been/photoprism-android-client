@@ -13,7 +13,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.forEach
 import androidx.core.view.isInvisible
-import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.GridLayoutManager.SpanSizeLookup
@@ -52,6 +51,7 @@ import ua.com.radiokot.photoprism.features.albums.view.DestinationAlbumSelection
 import ua.com.radiokot.photoprism.features.ext.memories.view.GalleryMemoriesListView
 import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
 import ua.com.radiokot.photoprism.features.gallery.data.model.SendableFile
+import ua.com.radiokot.photoprism.features.gallery.data.storage.GalleryNavPreferences
 import ua.com.radiokot.photoprism.features.gallery.data.storage.SimpleGalleryMediaRepository
 import ua.com.radiokot.photoprism.features.gallery.logic.FileReturnIntentCreator
 import ua.com.radiokot.photoprism.features.gallery.search.view.GallerySearchBarView
@@ -88,6 +88,7 @@ class GalleryActivity : BaseActivity() {
     private var isMovedBackByBackButton = false
     private val fileReturnIntentCreator: FileReturnIntentCreator by inject()
     private val welcomeScreenPreferences: WelcomeScreenPreferences by inject()
+    private val navPreferences: GalleryNavPreferences by inject()
 
     private val galleryItemsAdapter = ItemAdapter<GalleryListItem>()
     private lateinit var endlessScrollListener: EndlessRecyclerOnScrollListener
@@ -755,25 +756,28 @@ class GalleryActivity : BaseActivity() {
     }
 
     private fun initNavigation() = with(navigationView) {
-        val drawerLayout = rootView.root as? DrawerLayout
-        val navigationView = rootView.navigationView
         val navigationRail = rootView.navigationRail
+        val bottomNavigation = rootView.bottomNavigation
 
         when {
-            drawerLayout != null && navigationView != null -> {
-                initWithDrawer(
-                    drawerLayout = drawerLayout,
-                    navigationView = navigationView,
-                    searchBarView = searchBarView,
-                )
-                searchBarView.setFocusLeftView(navigationView)
-            }
-
             navigationRail != null -> {
                 initWithRail(
                     navigationRail = navigationRail,
                 )
                 searchBarView.setFocusLeftView(navigationRail)
+            }
+
+            bottomNavigation != null -> {
+                // 订阅导航配置变化，动态重建底部栏
+                navPreferences.bottomNavItems
+                    .subscribe { config ->
+                        initWithBottomNav(
+                            bottomNavigation = bottomNavigation,
+                            searchBarView = searchBarView,
+                            config = config,
+                        )
+                    }
+                    .autoDispose(this@GalleryActivity)
             }
 
             else ->

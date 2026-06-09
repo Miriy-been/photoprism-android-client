@@ -34,7 +34,7 @@
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textAppearance="@style/TextAppearance.Wabi.Title2"
             app:layout_constraintTop_toBottomOf="@id/banner_image_view"
             tools:text="Memories" />
 
@@ -46,7 +46,7 @@
             android:layout_marginTop="4dp"
             android:marqueeRepeatLimit="marquee_forever"
             android:paddingBottom="16dp"
-            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+            android:textAppearance="@style/TextAppearance.Wabi.Callout"
             app:layout_constraintTop_toBottomOf="@id/title_text_view"
             tools:text="My best extension description " />
 

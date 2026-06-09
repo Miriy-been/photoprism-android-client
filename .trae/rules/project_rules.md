@@ -96,3 +96,46 @@
 - Feature 内部结构: `data/` (model + storage) -> `view/` (Activity + ViewModel + Adapter) -> `logic/` (UseCase)
 - 跨 Feature 共享逻辑放在 `base/` 或 `extension/` 目录
 - API 定义统一放在 `api/` 目录下，按 domain 分模块（albums/photos/session 等）
+
+---
+
+## 当前开发状态
+
+### 正在进行的任务
+- **UI/UX 全面升级 — 批次 1：全局 Theme & Style 基础**（completed）
+- **UI/UX 全面升级 — 批次 2：底部导航栏重构**（completed）
+- **UI/UX 全面升级 — 批次 3：图库主界面重设计**（completed）
+- **UI/UX 全面升级 — 批次 4：媒体查看器重设计**（completed）
+- **UI/UX 全面升级 — 批次 5：搜索 + 相册 + 标签 + 人物**（completed）
+- **UI/UX 全面升级 — 批次 6：上传 + 设置 + 其余**（completed）
+- **UI/UX 全面升级 — 全部批次完成**
+
+### 已完成
+- 上传图片功能（`features/upload/`）
+  - `UploadFilesActivity` + `UploadFilesViewModel` + 布局
+  - Gallery 导航菜单接入 + FAB 入口
+  - 中文字符串支持
+- 扩展系统密钥自定义（`ParseEnteredKeyUseCase` 中 `yueyueya` 硬编码密钥）
+
+### UI 设计系统（侘寂 Wabi-Sabi）
+- **决定**：iOS × 侘寂风格融合，Material 组件体系不变，注入日系克制质感
+- **配色**：和紙 #F6F4EF / 藍鼠 #6B7E8A / 炭灰 #3A3835 / 褪紅 #C1665B
+- **禁止**：深色模式、渐变、纯黑 #000000、高饱和色（仅浅色主题）
+- **字体**：7 级字阶（Large Title 34sp → Caption 2 11sp）
+- **间距**：8dp 基准 6 档（xs/sm/md/lg/xl/2xl）
+- **圆角**：卡片 16dp / 按钮 12dp / 照片 4dp
+
+### 实现批次
+| 批次 | 内容 | 状态 |
+|------|------|------|
+| 1 | 全局 Theme/Style（colors, themes, styles, dimens） | completed |
+| 2 | 底部导航栏重构 | completed |
+| 3 | 图库主界面重设计 | completed |
+| 4 | 媒体查看器重设计 | completed |
+| 5 | 搜索 + 相册 + 标签 + 人物 | completed |
+| 6 | 上传 + 设置 + 其余 | completed |
+
+### 关键文件
+- 设计规范：`doc/未来规划/design_spec.md`
+- 任务计划：`doc/未来规划/task_plan.md`
+- 进度日志：`doc/未来规划/progress.md`

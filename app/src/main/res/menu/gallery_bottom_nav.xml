@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        侘寂底部导航栏 — 4 个主要标签
+        照片 | 搜索 | 相册 | 更多
+    -->
+    <item
+        android:id="@+id/bottom_photos"
+        android:icon="@drawable/ic_film"
+        android:title="照片" />
+
+    <item
+        android:id="@+id/bottom_search"
+        android:icon="@drawable/ic_search"
+        android:title="搜索" />
+
+    <item
+        android:id="@+id/bottom_albums"
+        android:icon="@drawable/ic_album"
+        android:title="相册" />
+
+    <item
+        android:id="@+id/bottom_more"
+        android:icon="@drawable/ic_gear"
+        android:title="更多" />
+
+</menu>

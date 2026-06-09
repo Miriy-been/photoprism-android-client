@@ -31,7 +31,7 @@
                 android:drawablePadding="16dp"
                 android:gravity="center_horizontal"
                 android:text="@string/photo_frame_widget_name"
-                android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+                android:textAppearance="@style/TextAppearance.Wabi.Title1"
                 app:drawableTopCompat="@mipmap/splash_logo"
                 app:layout_constraintTop_toTopOf="parent" />
 

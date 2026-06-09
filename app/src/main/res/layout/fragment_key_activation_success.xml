@@ -28,7 +28,7 @@
                 android:drawablePadding="16dp"
                 android:gravity="center_horizontal"
                 android:text="@string/key_activation_success_title"
-                android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+                android:textAppearance="@style/TextAppearance.Wabi.Title1"
                 app:drawableTopCompat="@mipmap/splash_logo" />
 
             <TextView
@@ -37,7 +37,7 @@
                 android:layout_marginTop="4dp"
                 android:gravity="center_horizontal"
                 android:text="@string/key_activation_success_subtitle"
-                android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+                android:textAppearance="@style/TextAppearance.Wabi.Body" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/added_extensions_recycler_view"

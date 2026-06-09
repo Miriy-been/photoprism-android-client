@@ -46,8 +46,8 @@
                 android:layout_marginStart="10dp"
                 android:layout_marginTop="20dp"
                 android:text="@string/include_private_content"
-                android:textAppearance="@style/TextAppearance.Material3.LabelLarge" />
-
+                android:textAppearance="@style/TextAppearance.Wabi.Body" />
+            <!-- private content -->
             <com.google.android.material.checkbox.MaterialCheckBox
                 android:id="@+id/only_favorite_switch"
                 style="@style/Widget.Material3.CompoundButton.CheckBox"
@@ -56,7 +56,7 @@
                 android:layout_marginStart="10dp"
                 android:nextFocusDown="@+id/reset_button"
                 android:text="@string/only_favorite_content"
-                android:textAppearance="@style/TextAppearance.Material3.LabelLarge" />
+                android:textAppearance="@style/TextAppearance.Wabi.Body" />
 
         </LinearLayout>
     </ua.com.radiokot.photoprism.view.ZeroTopFadingEdgeNestedScrollView>

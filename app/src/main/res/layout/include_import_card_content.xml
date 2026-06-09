@@ -27,7 +27,7 @@
                 android:drawablePadding="16dp"
                 android:gravity="center_horizontal"
                 android:text="@string/import_title"
-                android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+                android:textAppearance="@style/TextAppearance.Wabi.Title1"
                 app:drawableTopCompat="@mipmap/splash_logo" />
 
             <LinearLayout
@@ -56,7 +56,7 @@
                 android:drawablePadding="12dp"
                 android:paddingVertical="6dp"
                 android:text="@string/import_notifications_permission_rationale"
-                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textAppearance="@style/TextAppearance.Wabi.Caption1"
                 android:visibility="gone"
                 app:drawableStartCompat="@drawable/ic_bell_outline_16"
                 app:drawableTint="?colorOnSurfaceVariant"
@@ -70,7 +70,7 @@
                 android:drawablePadding="12dp"
                 android:paddingVertical="6dp"
                 android:text="@string/import_media_permission_rationale"
-                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textAppearance="@style/TextAppearance.Wabi.Caption1"
                 android:visibility="gone"
                 app:drawableStartCompat="@drawable/ic_album_16"
                 app:drawableTint="?colorOnSurfaceVariant"

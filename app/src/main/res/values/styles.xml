@@ -1,5 +1,114 @@
 <resources>
 
+    <!-- ============================================================
+         侘寂 Wabi-Sabi 字体系统
+         7 级字阶，Regular 字重
+         ============================================================ -->
+
+    <!-- Large Title — 页面大标题 -->
+    <style name="TextAppearance.Wabi.LargeTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textSize">34sp</item>
+        <item name="android:textColor">@color/wabi_text_primary</item>
+    </style>
+
+    <!-- Title 1 — 页面标题 -->
+    <style name="TextAppearance.Wabi.Title1" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:textSize">28sp</item>
+        <item name="android:textColor">@color/wabi_text_primary</item>
+    </style>
+
+    <!-- Title 2 — 分组标题（如日期分隔） -->
+    <style name="TextAppearance.Wabi.Title2" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textSize">22sp</item>
+        <item name="android:textColor">@color/wabi_accent</item>
+        <item name="android:letterSpacing">0.05</item>
+    </style>
+
+    <!-- Title 3 — 次级标题 -->
+    <style name="TextAppearance.Wabi.Title3" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@color/wabi_text_primary</item>
+    </style>
+
+    <!-- Body — 正文 -->
+    <style name="TextAppearance.Wabi.Body" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textSize">17sp</item>
+        <item name="android:textColor">@color/wabi_text_primary</item>
+    </style>
+
+    <!-- Callout — 次级正文 -->
+    <style name="TextAppearance.Wabi.Callout" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/wabi_text_primary</item>
+    </style>
+
+    <!-- Caption 1 — 辅助说明 -->
+    <style name="TextAppearance.Wabi.Caption1" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/wabi_text_secondary</item>
+    </style>
+
+    <!-- Caption 2 — 极小辅助 -->
+    <style name="TextAppearance.Wabi.Caption2" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/wabi_text_secondary</item>
+    </style>
+
+    <!-- 分割线样式 -->
+    <style name="WabiDivider">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">0.5dp</item>
+        <item name="android:background">@color/wabi_divider</item>
+    </style>
+
+    <!-- 照片网格项 — 4dp 圆角 -->
+    <style name="ShapeAppearance.Wabi.Photo" parent="ShapeAppearance.Material3.Corner.ExtraSmall">
+    </style>
+
+    <!-- 圆角卡片样式 -->
+    <style name="WabiCard">
+        <item name="android:background">@drawable/wabi_card_background</item>
+    </style>
+
+    <!-- "更多"菜单 — 列表项 -->
+    <style name="WabiMoreMenuItem">
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingHorizontal">@dimen/wabi_spacing_md</item>
+        <item name="android:paddingVertical">@dimen/wabi_spacing_sm</item>
+        <item name="android:minHeight">@dimen/wabi_touch_target</item>
+        <item name="android:background">?selectableItemBackground</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="WabiMoreMenuIcon">
+        <item name="android:layout_width">24dp</item>
+        <item name="android:layout_height">24dp</item>
+        <item name="android:tint">@color/wabi_text_secondary</item>
+    </style>
+
+    <style name="WabiMoreMenuText">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginStart">@dimen/wabi_spacing_md</item>
+        <item name="android:textAppearance">@style/TextAppearance.Wabi.Body</item>
+        <item name="android:textColor">@color/wabi_text_primary</item>
+    </style>
+
+    <!-- 侘寂底部导航栏样式 -->
+    <style name="WabiBottomNavigationView" parent="Widget.Material3.BottomNavigationView">
+        <item name="android:background">@color/wabi_bg_card</item>
+        <item name="itemIconTint">@color/bottom_nav_item_color</item>
+        <item name="itemTextColor">@color/bottom_nav_item_color</item>
+        <item name="itemBackground">@drawable/bottom_nav_item_bg</item>
+    </style>
+
+    <!-- ============================================================
+         保留的原有样式
+         ============================================================ -->
+
     <style name="NoticeTextAppearance">
         <item name="android:textSize">12sp</item>
         <item name="android:textColor">?android:textColorSecondary</item>

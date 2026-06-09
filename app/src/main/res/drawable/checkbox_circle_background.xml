@@ -3,7 +3,7 @@
     <item android:state_checked="true">
         <inset android:inset="4dp">
             <shape android:shape="oval">
-                <solid android:color="#000000" />
+                <solid android:color="@color/wabi_bg_card" />
             </shape>
         </inset>
     </item>

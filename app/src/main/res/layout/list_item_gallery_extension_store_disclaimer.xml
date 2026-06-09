@@ -20,7 +20,7 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="16dp"
             android:text="@string/extension_store_disclaimer"
-            android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+            android:textAppearance="@style/TextAppearance.Wabi.Body" />
 
         <Button
             android:id="@+id/got_it_button"

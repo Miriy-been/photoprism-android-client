@@ -18,6 +18,9 @@ import androidx.annotation.StringRes
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.GridLayoutManager
+
+
+
 import androidx.recyclerview.widget.RecyclerView
 import io.reactivex.rxjava3.kotlin.subscribeBy
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -171,7 +174,7 @@ class UploadFilesActivity : BaseActivity() {
 
     private fun openImagePicker() {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-            type = "image/*"
+            type = "*/*"
             putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             putExtra(Intent.EXTRA_LOCAL_ONLY, true)
             addCategory(Intent.CATEGORY_OPENABLE)

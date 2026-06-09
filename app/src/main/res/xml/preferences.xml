@@ -29,6 +29,13 @@
             app:summary="@string/extensions_preferences_summary"
             app:title="@string/extensions_preferences" />
 
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="@string/pk_customize_bottom_nav"
+            app:persistent="false"
+            app:summary="@string/customize_bottom_nav_summary"
+            app:title="@string/customize_bottom_nav_title" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

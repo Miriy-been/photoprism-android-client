@@ -54,9 +54,7 @@
                     android:layout_marginTop="24dp"
                     android:text="@string/upload_empty_title"
                     android:textAlignment="center"
-                    android:textColor="?colorOnSurface"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textAppearance="@style/TextAppearance.Wabi.Title3" />
 
                 <TextView
                     android:layout_width="match_parent"
@@ -64,8 +62,8 @@
                     android:layout_marginTop="8dp"
                     android:text="@string/upload_empty_hint"
                     android:textAlignment="center"
-                    android:textColor="?colorOnSurfaceVariant"
-                    android:textSize="14sp" />
+                    android:textAppearance="@style/TextAppearance.Wabi.Body"
+                    android:textColor="@color/wabi_text_secondary" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/pick_images_button"
@@ -105,16 +103,14 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/selected_photos"
-                        android:textColor="?colorOnSurface"
-                        android:textSize="16sp"
+                        android:textAppearance="@style/TextAppearance.Wabi.Body"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/selected_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="?colorOnSurfaceVariant"
-                        android:textSize="14sp"
+                        android:textAppearance="@style/TextAppearance.Wabi.Caption1"
                         tools:text="5 张" />
                 </LinearLayout>
 
@@ -140,9 +136,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
+                    app:cardBackgroundColor="@color/wabi_bg_card"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="?colorOutlineVariant"
+                    app:strokeColor="@color/wabi_divider"
                     app:strokeWidth="1dp">
 
                     <LinearLayout
@@ -155,8 +152,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/upload_info_title"
-                            android:textColor="?colorOnSurface"
-                            android:textSize="16sp"
+                            android:textAppearance="@style/TextAppearance.Wabi.Body"
                             android:textStyle="bold" />
 
                         <LinearLayout
@@ -200,7 +196,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="?colorSurface"
+        android:background="@color/wabi_bg_card"
         android:elevation="8dp"
         android:orientation="horizontal"
         android:padding="12dp">

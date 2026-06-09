@@ -39,10 +39,10 @@
             android:layout_marginHorizontal="8dp"
             android:gravity="center"
             android:paddingVertical="12dp"
-            android:shadowColor="@color/md_theme_light_outline"
+            android:shadowColor="@color/wabi_divider"
             android:shadowRadius="6"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            android:textColor="@color/md_theme_light_surface"
+            android:textAppearance="@style/TextAppearance.Wabi.Caption1"
+            android:textColor="@color/wabi_bg_card"
             tools:text="Aug 31, 2015" />
     </LinearLayout>
 </FrameLayout>

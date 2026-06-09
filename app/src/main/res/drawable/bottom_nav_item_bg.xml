@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 侘寂底部导航选中态背景（微妙的藍鼠浅底） -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/bottom_nav_item_bg_selected" android:state_checked="true" />
+    <item android:drawable="@android:color/transparent" />
+</selector>

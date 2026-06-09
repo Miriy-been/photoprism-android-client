@@ -9,7 +9,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-parcelize'
-    id 'kotlin-kapt'
+    id 'com.google.devtools.ksp'
     id 'com.jaredsburrows.license'
 }
 
@@ -40,13 +40,8 @@ android {
 
         fileProviderAuthority = applicationId + ".files"
 
-        javaCompileOptions {
-            annotationProcessorOptions {
-                arguments = [
-                        "room.schemaLocation": "$projectDir/db-schema".toString(),
-                        "room.incremental"   : "true"
-                ]
-            }
+        ksp {
+            arg("room.schemaLocation", "$projectDir/db-schema".toString())
         }
     }
 
@@ -204,8 +199,7 @@ dependencies {
     implementation 'com.github.chrisbanes:PhotoView:2.3.0'
 
     implementation "androidx.room:room-runtime:$room_version"
-    //noinspection KaptUsageInsteadOfKsp
-    kapt "androidx.room:room-compiler:$room_version"
+    ksp "androidx.room:room-compiler:$room_version"
 
     implementation 'androidx.browser:browser:1.9.0'
     implementation 'me.zhanghai.android.fastscroll:library:1.3.0'

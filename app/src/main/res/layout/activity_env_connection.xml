@@ -27,7 +27,7 @@
                 android:drawablePadding="16dp"
                 android:gravity="center_horizontal"
                 android:text="@string/app_name"
-                android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+                android:textAppearance="@style/TextAppearance.Wabi.Title1"
                 app:drawableTopCompat="@mipmap/splash_logo" />
 
             <TextView
@@ -36,7 +36,8 @@
                 android:layout_marginTop="4dp"
                 android:gravity="center_horizontal"
                 android:text="@string/connect_to_a_library"
-                android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+                android:textAppearance="@style/TextAppearance.Wabi.Body"
+                android:textColor="@color/wabi_text_secondary" />
 
             <Space
                 android:layout_width="0dp"

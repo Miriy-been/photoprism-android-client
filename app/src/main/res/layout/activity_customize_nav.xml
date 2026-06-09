@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 侘寂 — 自定义底部菜单栏 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/wabi_bg_base"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?actionBarSize"
+        android:background="@color/wabi_bg_card"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="@string/customize_bottom_nav_title"
+        app:titleTextAppearance="@style/TextAppearance.Wabi.Title3"
+        app:titleTextColor="@color/wabi_text_primary" />
+
+    <!-- 提示文字 -->
+    <TextView
+        android:id="@+id/hint_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/wabi_spacing_md"
+        android:layout_marginTop="@dimen/wabi_spacing_sm"
+        android:text="@string/customize_bottom_nav_summary"
+        android:textAppearance="@style/TextAppearance.Wabi.Caption1"
+        android:textColor="@color/wabi_text_secondary" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/wabi_spacing_sm"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="@dimen/wabi_spacing_xl" />
+
+</LinearLayout>

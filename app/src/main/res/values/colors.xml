@@ -1,35 +1,70 @@
 <resources>
-    <color name="seed">#CACBFF</color>
-    <color name="md_theme_light_primary">#5256A9</color>
+    <!-- ============================================================
+         侘寂 Wabi-Sabi 色彩系统
+         灵感：日系克制美学 — 和紙 · 藍鼠 · 炭灰 · 褪紅
+         禁用：纯黑、渐变、高饱和、深色模式
+         ============================================================ -->
+
+    <!-- 基础色板 -->
+    <color name="seed">#6B7E8A</color>
+
+    <!-- 主色调：藍鼠（あいねず）— 克制的蓝灰 -->
+    <color name="md_theme_light_primary">#6B7E8A</color>
     <color name="md_theme_light_onPrimary">#FFFFFF</color>
-    <color name="md_theme_light_primaryContainer">#E1E0FF</color>
-    <color name="md_theme_light_onPrimaryContainer">#080764</color>
-    <color name="md_theme_light_secondary">#5C5D72</color>
+    <color name="md_theme_light_primaryContainer">#E8EDF0</color>
+    <color name="md_theme_light_onPrimaryContainer">#3A3835</color>
+
+    <!-- 次级色 -->
+    <color name="md_theme_light_secondary">#8D8882</color>
     <color name="md_theme_light_onSecondary">#FFFFFF</color>
-    <color name="md_theme_light_secondaryContainer">#CECBEC</color>
-    <color name="md_theme_light_onSecondaryContainer">#191A2C</color>
-    <color name="md_theme_light_tertiary">#79536A</color>
+    <color name="md_theme_light_secondaryContainer">#F6F4EF</color>
+    <color name="md_theme_light_onSecondaryContainer">#3A3835</color>
+
+    <!-- 第三级色（同色系克制） -->
+    <color name="md_theme_light_tertiary">#6B7E8A</color>
     <color name="md_theme_light_onTertiary">#FFFFFF</color>
-    <color name="md_theme_light_tertiaryContainer">#FFD8ED</color>
-    <color name="md_theme_light_onTertiaryContainer">#2E1125</color>
-    <color name="md_theme_light_error">#BA1A1A</color>
-    <color name="md_theme_light_errorContainer">#FFDAD6</color>
+    <color name="md_theme_light_tertiaryContainer">#E8EDF0</color>
+    <color name="md_theme_light_onTertiaryContainer">#3A3835</color>
+
+    <!-- 错误色：褪紅（あせべに）— 柔和的红棕 -->
+    <color name="md_theme_light_error">#C1665B</color>
     <color name="md_theme_light_onError">#FFFFFF</color>
-    <color name="md_theme_light_onErrorContainer">#410002</color>
-    <color name="md_theme_light_background">#FFFBFF</color>
-    <color name="md_theme_light_onBackground">#1B1B1F</color>
-    <color name="md_theme_light_surface">#FFFBFF</color>
-    <color name="md_theme_light_onSurface">#1B1B1F</color>
-    <color name="md_theme_light_surfaceVariant">#E4E1EC</color>
-    <color name="md_theme_light_onSurfaceVariant">#46464F</color>
-    <color name="md_theme_light_outline">#777680</color>
-    <color name="md_theme_light_inverseOnSurface">#F3EFF4</color>
-    <color name="md_theme_light_inverseSurface">#313034</color>
-    <color name="md_theme_light_inversePrimary">#C0C1FF</color>
-    <color name="md_theme_dark_primary">#C0C1FF</color>
-    <color name="md_theme_dark_onPrimary">#222578</color>
-    <color name="md_theme_dark_primaryContainer">#5053A5</color>
-    <color name="md_theme_dark_onPrimaryContainer">#E1E0FF</color>
+    <color name="md_theme_light_errorContainer">#FDF0EE</color>
+    <color name="md_theme_light_onErrorContainer">#4A1C18</color>
+
+    <!-- 表面/背景色 -->
+    <color name="md_theme_light_background">#F6F4EF</color>   <!-- 和紙（わし）暖白底 -->
+    <color name="md_theme_light_onBackground">#3A3835</color>  <!-- 炭灰（墨汁）文字 -->
+    <color name="md_theme_light_surface">#FFFFFF</color>       <!-- 纯白卡片表面 -->
+    <color name="md_theme_light_onSurface">#3A3835</color>
+    <color name="md_theme_light_surfaceVariant">#E8E4DC</color><!-- 极淡暖灰（分割线） -->
+    <color name="md_theme_light_onSurfaceVariant">#8D8882</color>
+    <color name="md_theme_light_outline">#E8E4DC</color>       <!-- 边线 -->
+    <color name="md_theme_light_inverseOnSurface">#F6F4EF</color>
+    <color name="md_theme_light_inverseSurface">#3A3835</color>
+    <color name="md_theme_light_inversePrimary">#6B7E8A</color>
+
+    <!-- 语义别名（方便布局中直接引用） -->
+    <color name="wabi_bg_base">@color/md_theme_light_background</color>
+    <color name="wabi_bg_card">@color/md_theme_light_surface</color>
+    <color name="wabi_divider">@color/md_theme_light_outline</color>
+    <color name="wabi_accent">@color/md_theme_light_primary</color>
+    <color name="wabi_accent_light">@color/md_theme_light_primaryContainer</color>
+    <color name="wabi_text_primary">@color/md_theme_light_onBackground</color>
+    <color name="wabi_text_secondary">@color/md_theme_light_onSurfaceVariant</color>
+    <color name="wabi_error">@color/md_theme_light_error</color>
+
+    <!-- ============================================================
+         保留 — 仅用于全屏媒体查看器（功能性暗色背景）
+         ============================================================ -->
+    <color name="md_theme_dark_background">#1A1816</color>
+    <color name="md_theme_dark_onBackground">#E5E1E6</color>
+    <color name="md_theme_dark_surface">#1C1C1E</color>
+    <color name="md_theme_dark_onSurface">#E5E1E6</color>
+    <color name="md_theme_dark_primary">#A0B5C0</color>
+    <color name="md_theme_dark_onPrimary">#3A3835</color>
+    <color name="md_theme_dark_primaryContainer">#4A5860</color>
+    <color name="md_theme_dark_onPrimaryContainer">#E8EDF0</color>
     <color name="md_theme_dark_secondary">#C5C4DD</color>
     <color name="md_theme_dark_onSecondary">#2E2F42</color>
     <color name="md_theme_dark_secondaryContainer">#57576C</color>
@@ -42,24 +77,21 @@
     <color name="md_theme_dark_errorContainer">#93000A</color>
     <color name="md_theme_dark_onError">#690005</color>
     <color name="md_theme_dark_onErrorContainer">#FFDAD6</color>
-    <color name="md_theme_dark_background">#1B1B1F</color>
-    <color name="md_theme_dark_onBackground">#E5E1E6</color>
-    <color name="md_theme_dark_surface">#1B1B1F</color>
-    <color name="md_theme_dark_onSurface">#E5E1E6</color>
+    <color name="md_theme_dark_outline">#918F9A</color>
     <color name="md_theme_dark_surfaceVariant">#46464F</color>
     <color name="md_theme_dark_onSurfaceVariant">#C7C5D0</color>
-    <color name="md_theme_dark_outline">#918F9A</color>
     <color name="md_theme_dark_inverseOnSurface">#1B1B1F</color>
     <color name="md_theme_dark_inverseSurface">#E5E1E6</color>
     <color name="md_theme_dark_inversePrimary">#5256A9</color>
-    <color name="md_theme_dark_shadow">#000000</color>
-    <color name="md_theme_dark_surfaceTint">#C0C1FF</color>
+    <color name="md_theme_dark_shadow">#1A1816</color>
+    <color name="md_theme_dark_surfaceTint">#A0B5C0</color>
     <color name="md_theme_dark_outlineVariant">#46464F</color>
-    <color name="md_theme_dark_scrim">#000000</color>
+    <color name="md_theme_dark_scrim">#1A1816</color>
 
-    <color name="media_type_background">#30000000</color>
-    <color name="black_overlay">#66000000</color>
-    <color name="media_viewer_toolbar_gradient_start">#99000000</color>
-    <color name="image_placeholder">#CCCCCC</color>
+    <!-- 特殊颜色 -->
+    <color name="media_type_background">#4D3A3835</color>
+    <color name="black_overlay">#661A1816</color>
+    <color name="media_viewer_toolbar_gradient_start">#991A1816</color>
+    <color name="image_placeholder">#E8E4DC</color>  <!-- 和紙风格占位色 -->
     <color name="maplibre_blue">@color/md_theme_light_primary</color>
 </resources>

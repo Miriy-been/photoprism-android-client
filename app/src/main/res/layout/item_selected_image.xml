@@ -47,7 +47,7 @@
             android:layout_gravity="top|end"
             android:layout_margin="4dp"
             android:contentDescription="@string/remove"
-            app:backgroundTint="#CC000000"
+            app:backgroundTint="#B03A3835"
             app:fabCustomSize="24dp"
             app:srcCompat="@drawable/ic_close"
             app:tint="@android:color/white"

@@ -1,28 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 侘寂底部导航栏布局 — 手机端 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    app:elevation="0dp"
+    android:orientation="vertical"
     tools:context=".features.gallery.view.GalleryActivity">
-
-    <!-- There's also a wide version. -->
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:id="@+id/content_layout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
         <include layout="@layout/include_activity_gallery_content" />
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/navigation_view"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        app:drawerLayoutCornerSize="0dp"
-        app:headerLayout="@layout/include_gallery_navigation_header"
-        app:menu="@menu/gallery_navigation" />
-</androidx.drawerlayout.widget.DrawerLayout>
+    <!-- 侘寂底部导航栏 -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
+        style="@style/WabiBottomNavigationView"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/default_navigation_bar_height"
+        android:background="@color/wabi_bg_card"
+        app:elevation="0dp"
+        app:fabAnimationMode="scale"
+        app:itemIconSize="20dp"
+        app:itemPaddingBottom="4dp"
+        app:itemPaddingTop="6dp"
+        app:itemRippleColor="@color/wabi_accent_light"
+        app:itemTextAppearanceActive="@style/TextAppearance.Wabi.Caption2"
+        app:itemTextAppearanceInactive="@style/TextAppearance.Wabi.Caption2"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/gallery_bottom_nav" />
+
+</LinearLayout>

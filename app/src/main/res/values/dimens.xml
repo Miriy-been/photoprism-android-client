@@ -1,5 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ============================================================
+         侘寂 Wabi-Sabi 间距系统（8dp 基准）
+         ============================================================ -->
+    <dimen name="wabi_spacing_xs">4dp</dimen>   <!-- 紧密元素间 -->
+    <dimen name="wabi_spacing_sm">8dp</dimen>   <!-- 图标与文字间 -->
+    <dimen name="wabi_spacing_md">16dp</dimen>  <!-- 内容水平边距、卡片内边距 -->
+    <dimen name="wabi_spacing_lg">20dp</dimen>  <!-- 卡片水平边距 -->
+    <dimen name="wabi_spacing_xl">24dp</dimen>  <!-- 分组间距、段落间距 -->
+    <dimen name="wabi_spacing_2xl">32dp</dimen> <!-- 大段落间距 -->
+
+    <!-- ============================================================
+         侘寂 圆角系统
+         ============================================================ -->
+    <dimen name="wabi_corner_card">16dp</dimen>      <!-- 卡片圆角 -->
+    <dimen name="wabi_corner_button">12dp</dimen>    <!-- 按钮圆角 -->
+    <dimen name="wabi_corner_dialog">16dp</dimen>    <!-- 对话框圆角 -->
+    <dimen name="wabi_corner_input">10dp</dimen>     <!-- 输入框圆角 -->
+    <dimen name="wabi_corner_photo">4dp</dimen>      <!-- 照片网格项微圆角 -->
+    <dimen name="wabi_touch_target">44dp</dimen>     <!-- iOS HIG：最小触摸区域 -->
+
+    <!-- ============================================================
+         原有尺寸变量
+         ============================================================ -->
     <dimen name="list_item_gallery_media_margin">2dp</dimen>
     <dimen name="list_item_gallery_media_margin_double">4dp</dimen>
     <dimen name="list_item_gallery_media_min_size">80dp</dimen>
@@ -23,17 +47,9 @@
     <dimen name="list_item_person_margin_end">8dp</dimen>
     <dimen name="list_item_person_image_size">72dp</dimen>
     <dimen name="selection_bottom_app_bar_height">56dp</dimen>
-    <dimen name="selected_gallery_item_corner_radius">
-        11.5dp
-        <!-- Should match the radius of round buttons on the view -->
-    </dimen>
+    <dimen name="selected_gallery_item_corner_radius">11.5dp</dimen>
     <dimen name="search_bar_width" tools:ignore="ReferenceType">@integer/match_parent</dimen>
-    <dimen name="swipe_to_dismiss_distance_threshold" tools:ignore="InOrMmUsage">
-        8mm
-        <!-- Dragging for 8 mm with a finger is fairly easy.
-         When the distance is fixed and not calculated as a view height fraction,
-         doesn't matter whether you run the app on a large tablet or a small phone. -->
-    </dimen>
+    <dimen name="swipe_to_dismiss_distance_threshold" tools:ignore="InOrMmUsage">8mm</dimen>
     <dimen name="gallery_swipe_refresh_start_offset">64dp</dimen>
     <dimen name="gallery_swipe_refresh_end_offset">32dp</dimen>
     <dimen name="menu_icon_margin_horizontal">8dp</dimen>

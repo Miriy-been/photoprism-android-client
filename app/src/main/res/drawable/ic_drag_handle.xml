@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 拖拽手柄 — 三横线 -->
+    <path
+        android:fillColor="#8D8882"
+        android:pathData="M6,10h12v2h-12zM6,6h12v2h-12zM6,14h12v2h-12z" />
+</vector>

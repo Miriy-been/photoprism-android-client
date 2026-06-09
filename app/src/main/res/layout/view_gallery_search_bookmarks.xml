@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:text="@string/search_bookmarks"
-        android:textAppearance="@style/TextAppearance.Material3.LabelLarge" />
+        android:textAppearance="@style/TextAppearance.Wabi.Title3" />
 
     <com.google.android.flexbox.FlexboxLayout
         android:id="@+id/bookmarks_chips_layout"

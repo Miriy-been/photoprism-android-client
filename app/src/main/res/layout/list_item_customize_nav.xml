@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 侘寂 — 自定义菜单列表项：拖拽手柄 + 图标 + 文字 + Switch -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/wabi_bg_card"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="@dimen/wabi_spacing_md"
+    android:paddingVertical="@dimen/wabi_spacing_sm"
+    android:minHeight="@dimen/wabi_touch_target">
+
+    <!-- 拖拽手柄 -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/drag_handle"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:contentDescription="拖拽排序"
+        android:src="@drawable/ic_drag_handle"
+        app:tint="@color/wabi_text_secondary" />
+
+    <!-- 功能图标 -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/icon_view"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="@dimen/wabi_spacing_sm"
+        app:tint="@color/wabi_accent" />
+
+    <!-- 功能名称 -->
+    <TextView
+        android:id="@+id/label_text_view"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/wabi_spacing_md"
+        android:layout_weight="1"
+        android:textAppearance="@style/TextAppearance.Wabi.Body"
+        android:textColor="@color/wabi_text_primary" />
+
+    <!-- 显示/隐藏 开关 -->
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/visibility_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+</LinearLayout>

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 侘寂日标题 — Title 2 藍鼠色 -->
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="48sp"
     android:focusable="false"
     android:gravity="center_vertical"
-    android:paddingHorizontal="12dp"
-    android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+    android:paddingHorizontal="@dimen/wabi_spacing_md"
+    android:textAppearance="@style/TextAppearance.Wabi.Title2"
     tools:text="Sun, 24th" />

@@ -40,7 +40,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="@string/tfa_code_dialog_message"
-        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+        android:textAppearance="@style/TextAppearance.Wabi.Callout"
         app:layout_constraintTop_toBottomOf="@id/title_text_view" />
 
     <com.google.android.material.textfield.TextInputLayout

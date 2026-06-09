@@ -210,6 +210,9 @@
     <string name="key_activation_success_done">Done</string>
     <string name="template_extensions_preferences_activated_extensions_for">%1$s for %2$s</string>
     <string name="gallery_deleting_confirmation">Delete selected items forever?</string>
+    <string name="customize_bottom_nav_title">Customize Bottom Navigation</string>
+    <string name="customize_bottom_nav_summary">Drag to reorder, toggle to show or hide</string>
+    <string name="more">More</string>
     <string name="general_preferences">General</string>
     <string name="import_notification_channel_name">@string/importt</string>
     <string name="import_notification_channel_description">Progress of the background import</string>

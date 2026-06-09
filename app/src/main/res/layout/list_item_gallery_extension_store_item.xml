@@ -36,7 +36,7 @@
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textAppearance="@style/TextAppearance.Wabi.Title2"
             app:layout_constraintTop_toBottomOf="@id/banner_image_view"
             tools:text="Memories" />
 
@@ -47,7 +47,7 @@
             android:layout_marginHorizontal="16dp"
             android:layout_marginTop="4dp"
             android:marqueeRepeatLimit="marquee_forever"
-            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+            android:textAppearance="@style/TextAppearance.Wabi.Callout"
             app:layout_constraintTop_toBottomOf="@id/title_text_view"
             tools:text="My best extension description\nMy best extension description\nMy best extension description" />
 
@@ -92,8 +92,8 @@
             android:drawablePadding="12sp"
             android:gravity="center_vertical"
             android:text="@string/extension_store_item_activated"
-            android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-            android:textColor="?colorOnSurfaceVariant"
+            android:textAppearance="@style/TextAppearance.Wabi.Title3"
+            android:textColor="@color/wabi_text_secondary"
             android:textSize="16sp"
             app:drawableStartCompat="@drawable/ic_awesome_white"
             app:drawableTint="?colorOnSurfaceVariant"
@@ -108,7 +108,7 @@
             android:layout_marginHorizontal="16dp"
             android:gravity="center_vertical"
             android:maxLines="1"
-            android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+            android:textAppearance="@style/TextAppearance.Wabi.Title2"
             app:autoSizeMaxTextSize="22sp"
             app:autoSizeTextType="uniform"
             app:layout_constraintBottom_toBottomOf="@id/buy_button"

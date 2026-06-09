@@ -216,6 +216,12 @@
             android:resizeableActivity="true" />
 
         <activity
+            android:name=".features.prefs.navcustomize.view.CustomizeNavActivity"
+            android:exported="false"
+            android:label="@string/customize_bottom_nav_title"
+            android:resizeableActivity="true" />
+
+        <activity
             android:name=".features.albums.view.DestinationAlbumSelectionActivity"
             android:exported="false"
             android:label="@string/albums"
