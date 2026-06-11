@@ -22,6 +22,7 @@
     <string name="pk_map" translatable="false">map</string>
     <string name="pk_custom_map_style" translatable="false">custom_map_style</string>
     <string name="pk_customize_bottom_nav" translatable="false">customize_bottom_nav</string>
+    <string name="pk_sync" translatable="false">sync</string>
 
     <string name="pk_ext_summary" translatable="false">ext_summary</string>
     <string name="pk_ext_store" translatable="false">ext_store</string>

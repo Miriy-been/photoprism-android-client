@@ -248,6 +248,34 @@
     <string name="upload_selected_count">%d selected</string>
     <string name="selected_photos">Selected photos</string>
     <string name="remove">Remove</string>
+    <!-- Sync -->
+    <string name="sync_settings">Sync settings</string>
+    <string name="sync_settings_summary">Auto-sync phone photos to PhotoPrism</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_syncing">Syncing…</string>
+    <string name="sync_last_sync">Last sync</string>
+    <string name="sync_photos_synced">Photos synced</string>
+    <string name="sync_pending">Pending</string>
+    <string name="sync_choose_folders">Select folders to sync</string>
+    <string name="sync_selected_folders">Selected folders</string>
+    <string name="sync_add_folder">Add folder</string>
+    <string name="sync_no_folders">No folders selected. Tap "Add folder" to choose.</string>
+    <string name="sync_folder_hint">Photos are usually in DCIM/Camera or Pictures directory.</string>
+    <string name="sync_remove_folder">Remove</string>
+    <string name="sync_wifi_only">Wi-Fi only</string>
+    <string name="sync_notification_channel">Photo sync</string>
+    <string name="sync_notification_progress_title">Syncing photos…</string>
+    <string name="sync_notification_progress_folder">Syncing %s…</string>
+    <string name="sync_complete_title">Sync complete</string>
+    <string name="sync_complete_text">%d new photos uploaded</string>
+    <string name="sync_failed_title">Sync failed</string>
+    <string name="sync_failed_text">%d photos failed to upload</string>
+    <string name="sync_failed_partial_text">%1$d uploaded, %2$d failed</string>
+    <string name="sync_permission_denied">Storage permission is required to scan photos for sync</string>
+    <plurals name="sync_notification_progress_count">
+        <item quantity="one">%d photo synced</item>
+        <item quantity="other">%d photos synced</item>
+    </plurals>
     <string name="photo_frame_widget_name">Photo frame</string>
     <string name="photo_frame_widget_description">Shows a random photo changed once every few hours</string>
     <string name="photos">Photos</string>

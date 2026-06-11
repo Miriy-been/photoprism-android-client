@@ -66,6 +66,7 @@ import ua.com.radiokot.photoprism.features.map.data.storage.MapPreferences
 import ua.com.radiokot.photoprism.features.prefs.extension.bindToSubject
 import ua.com.radiokot.photoprism.features.prefs.extension.requirePreference
 import ua.com.radiokot.photoprism.features.prefs.navcustomize.view.CustomizeNavActivity
+import ua.com.radiokot.photoprism.features.sync.view.SyncSettingsActivity
 import ua.com.radiokot.photoprism.features.viewer.slideshow.data.model.SlideshowSpeed
 import ua.com.radiokot.photoprism.features.viewer.slideshow.data.storage.SlideshowPreferences
 import ua.com.radiokot.photoprism.features.webview.logic.WebViewInjectionScriptFactory
@@ -201,6 +202,13 @@ class PreferencesFragment :
         with(requirePreference(R.string.pk_customize_bottom_nav)) {
             setOnPreferenceClickListener {
                 startActivity(Intent(requireContext(), CustomizeNavActivity::class.java))
+                true
+            }
+        }
+
+        with(requirePreference(R.string.pk_sync)) {
+            setOnPreferenceClickListener {
+                startActivity(Intent(requireContext(), SyncSettingsActivity::class.java))
                 true
             }
         }

@@ -329,5 +329,30 @@
     <string name="selected_photos">已选照片</string>
     <string name="select_albums">选择相册</string>
     <string name="remove">移除</string>
+    <!-- 同步 -->
+    <string name="sync_settings">同步设置</string>
+    <string name="sync_settings_summary">自动同步手机照片到 PhotoPrism</string>
+    <string name="sync_now">立即同步</string>
+    <string name="sync_last_sync">上次同步</string>
+    <string name="sync_photos_synced">已同步照片</string>
+    <string name="sync_pending">待同步</string>
+    <string name="sync_choose_folders">选择要同步的文件夹</string>
+    <string name="sync_selected_folders">已选文件夹</string>
+    <string name="sync_add_folder">添加文件夹</string>
+    <string name="sync_no_folders">尚未选择文件夹，点击「添加文件夹」选择</string>
+    <string name="sync_remove_folder">移除</string>
+    <string name="sync_wifi_only">仅 Wi-Fi 下同步</string>
+    <string name="sync_notification_channel">照片同步</string>
+    <string name="sync_notification_progress_title">正在同步照片…</string>
+    <string name="sync_notification_progress_folder">正在同步 %s…</string>
+    <string name="sync_complete_title">同步完成</string>
+    <string name="sync_complete_text">%d 张新照片已上传</string>
+    <string name="sync_failed_title">同步失败</string>
+    <string name="sync_failed_text">%d 张照片未能上传</string>
+    <string name="sync_failed_partial_text">%1$d 张已上传，%2$d 张失败</string>
+    <string name="sync_permission_denied">需要存储权限才能扫描照片进行同步</string>
+    <plurals name="sync_notification_progress_count">
+        <item quantity="other">已同步 %d 张照片</item>
+    </plurals>
 
 </resources>

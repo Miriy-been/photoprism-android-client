@@ -23,6 +23,14 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
 
+    <!-- MediaStore access for sync feature: Android 13+ -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <!-- MediaStore access for sync feature: Android 12 and below -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <!-- MapLibre unnecessary permissions
          to be removed from the merged manifest-->
     <uses-permission
@@ -116,6 +124,13 @@
             android:name=".features.prefs.view.PreferencesActivity"
             android:exported="false"
             android:label="@string/preferences"
+            android:resizeableActivity="true" />
+
+        <activity
+            android:name=".features.sync.view.SyncSettingsActivity"
+            android:exported="false"
+            android:label="@string/sync_settings"
+            android:parentActivityName=".features.prefs.view.PreferencesActivity"
             android:resizeableActivity="true" />
 
         <activity

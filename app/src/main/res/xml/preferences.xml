@@ -36,6 +36,13 @@
             app:summary="@string/customize_bottom_nav_summary"
             app:title="@string/customize_bottom_nav_title" />
 
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="@string/pk_sync"
+            app:persistent="false"
+            app:summary="@string/sync_settings_summary"
+            app:title="@string/sync_settings" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

@@ -40,6 +40,7 @@ import ua.com.radiokot.photoprism.features.importt.view.ImportActivity
 import ua.com.radiokot.photoprism.features.upload.uploadFeatureModule
 import ua.com.radiokot.photoprism.features.labels.labelsFeatureModule
 import ua.com.radiokot.photoprism.features.map.mapFeatureModule
+import ua.com.radiokot.photoprism.features.sync.syncFeatureModule
 import ua.com.radiokot.photoprism.features.viewer.mediaViewerFeatureModule
 import ua.com.radiokot.photoprism.features.viewer.slideshow.di.slideshowFeatureModule
 import ua.com.radiokot.photoprism.features.webview.di.webViewFeatureModule
@@ -92,6 +93,7 @@ class PhotoPrismGallery : Application() {
                         + photoFrameWidgetFeatureModule
                         + labelsFeatureModule
                         + mapFeatureModule
+                        + syncFeatureModule
             )
             androidFileProperties("app.properties")
         }

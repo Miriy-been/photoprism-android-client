@@ -41,8 +41,12 @@ val appDbModule = module {
                         "`media_types`=?",
                         arrayOf("[]")
                     )
-                }
+                },
+                roomMigration(from = 8, to = 9) {
+                    // No schema changes; version bump to match on-disk DB
+                },
             )
+            .fallbackToDestructiveMigration()
             .build()
     } bind AppDatabase::class
 }

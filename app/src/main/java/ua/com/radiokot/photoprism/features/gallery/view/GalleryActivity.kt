@@ -27,6 +27,9 @@ import com.mikepenz.fastadapter.diff.FastAdapterDiffUtil
 import com.mikepenz.fastadapter.listeners.addClickListener
 import com.mikepenz.fastadapter.listeners.addLongClickListener
 import com.mikepenz.fastadapter.scroll.EndlessRecyclerOnScrollListener
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.kotlin.subscribeBy
@@ -58,6 +61,10 @@ import ua.com.radiokot.photoprism.features.gallery.search.view.GallerySearchBarV
 import ua.com.radiokot.photoprism.features.gallery.search.view.GallerySearchView
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryContentLoadingError
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryContentLoadingErrorResources
+import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
+import ua.com.radiokot.photoprism.features.sync.data.storage.SyncPreferencesOnPrefs
+import ua.com.radiokot.photoprism.features.sync.logic.SyncWorker
+import kotlinx.coroutines.runBlocking
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryItemScale
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryListItem
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryListViewModel
@@ -83,6 +90,9 @@ class GalleryActivity : BaseActivity() {
     private lateinit var rootView: ActivityGalleryBinding
     private lateinit var view: IncludeActivityGalleryContentBinding
     private val viewModel: GalleryViewModel by viewModel()
+    private val syncFolderDao: SyncFolderDao by inject()
+    private val syncPreferences: SyncPreferencesOnPrefs by inject()
+    private val workManager: WorkManager by inject()
     private val log = kLogger("GGalleryActivity")
     private var isBackButtonJustPressed = false
     private var isMovedBackByBackButton = false
@@ -1136,6 +1146,28 @@ class GalleryActivity : BaseActivity() {
         super.onResume()
         if (isMovedBackByBackButton) {
             viewModel.onScreenResumedAfterMovedBackWithBackButton()
+        }
+        checkSyncOnResume()
+    }
+
+    private fun checkSyncOnResume() {
+        val lastSync = syncPreferences.lastFullSyncAt.value ?: 0L
+        val fiveMinutesAgo = System.currentTimeMillis() - 5 * 60 * 1000
+
+        if (lastSync < fiveMinutesAgo) {
+            Single.fromCallable { runBlocking { syncFolderDao.countEnabled() } }
+                .subscribeOn(Schedulers.io())
+                .subscribe { enabledCount ->
+                    if (enabledCount > 0) {
+                        workManager.enqueueUniqueWork(
+                            SyncWorker.TAG,
+                            ExistingWorkPolicy.KEEP,
+                            OneTimeWorkRequestBuilder<SyncWorker>()
+                                .addTag(SyncWorker.TAG)
+                                .build()
+                        )
+                    }
+                }
         }
     }
 
