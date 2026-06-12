@@ -43,6 +43,13 @@
             app:summary="@string/sync_settings_summary"
             app:title="@string/sync_settings" />
 
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="@string/pk_clear_cache"
+            app:persistent="false"
+            app:summary="@string/clear_cache_summary"
+            app:title="@string/clear_cache" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

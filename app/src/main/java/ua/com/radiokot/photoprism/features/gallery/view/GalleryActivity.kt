@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -63,6 +64,8 @@ import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryContentLoad
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryContentLoadingErrorResources
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncPreferencesOnPrefs
+import ua.com.radiokot.photoprism.features.sync.data.storage.SyncedFileDao
+import ua.com.radiokot.photoprism.features.sync.logic.ScanLocalFoldersUseCase
 import ua.com.radiokot.photoprism.features.sync.logic.SyncWorker
 import kotlinx.coroutines.runBlocking
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryItemScale
@@ -91,6 +94,8 @@ class GalleryActivity : BaseActivity() {
     private lateinit var view: IncludeActivityGalleryContentBinding
     private val viewModel: GalleryViewModel by viewModel()
     private val syncFolderDao: SyncFolderDao by inject()
+    private val syncedFileDao: SyncedFileDao by inject()
+    private val scanLocalFoldersUseCase: ScanLocalFoldersUseCase by inject()
     private val syncPreferences: SyncPreferencesOnPrefs by inject()
     private val workManager: WorkManager by inject()
     private val log = kLogger("GGalleryActivity")
@@ -220,6 +225,7 @@ class GalleryActivity : BaseActivity() {
         subscribeToData()
         subscribeToEvents()
         subscribeToState()
+        subscribeToConnectivityToggle()
 
         downloadProgressView.init()
         initSearch()
@@ -303,6 +309,14 @@ class GalleryActivity : BaseActivity() {
                 }
             }
         }
+    }
+
+    private fun subscribeToConnectivityToggle() {
+        viewModel.isOffline
+            .subscribe { isOffline ->
+                view.offlineBanner.visibility = if (isOffline) View.VISIBLE else View.GONE
+            }
+            .autoDispose(this)
     }
 
     private fun subscribeToEvents() {
@@ -1151,14 +1165,28 @@ class GalleryActivity : BaseActivity() {
     }
 
     private fun checkSyncOnResume() {
-        val lastSync = syncPreferences.lastFullSyncAt.value ?: 0L
-        val fiveMinutesAgo = System.currentTimeMillis() - 5 * 60 * 1000
+        val intervalMs = syncPreferences.resyncCheckIntervalMs
+        // Manual sync — no automatic trigger
+        if (intervalMs <= 0) return
 
-        if (lastSync < fiveMinutesAgo) {
-            Single.fromCallable { runBlocking { syncFolderDao.countEnabled() } }
+        val lastSync = syncPreferences.lastFullSyncAt.value ?: 0L
+        val threshold = System.currentTimeMillis() - intervalMs
+
+        if (lastSync < threshold) {
+            Single.fromCallable {
+                runBlocking {
+                    val enabledFolders = syncFolderDao.getEnabledFolders()
+                    if (enabledFolders.isEmpty()) return@runBlocking false
+
+                    // Check if there are actually pending files before enqueuing
+                    enabledFolders.any { folder ->
+                        scanLocalFoldersUseCase.countNewFilesByPath(folder.relativePath, syncedFileDao) > 0
+                    }
+                }
+            }
                 .subscribeOn(Schedulers.io())
-                .subscribe { enabledCount ->
-                    if (enabledCount > 0) {
+                .subscribe { hasPending ->
+                    if (hasPending) {
                         workManager.enqueueUniqueWork(
                             SyncWorker.TAG,
                             ExistingWorkPolicy.KEEP,

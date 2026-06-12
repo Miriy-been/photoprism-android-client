@@ -17,11 +17,19 @@ import ua.com.radiokot.photoprism.extension.kLogger
 import ua.com.radiokot.photoprism.features.albums.data.model.DestinationAlbum
 import ua.com.radiokot.photoprism.features.importt.logic.ImportFilesUseCase
 import ua.com.radiokot.photoprism.features.importt.model.ImportableFile
+import ua.com.radiokot.photoprism.features.sync.data.model.SyncHistoryItem
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncedFile
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
+import ua.com.radiokot.photoprism.features.sync.data.storage.SyncHistoryItemDao
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncedFileDao
 import ua.com.radiokot.photoprism.features.sync.view.SyncNotificationsManager
+import ua.com.radiokot.photoprism.api.albums.model.PhotoPrismAlbumCreation
+import ua.com.radiokot.photoprism.api.albums.service.PhotoPrismAlbumsService
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+
+data class SyncResult(val synced: Int, val failed: Int)
+data class FolderResult(val synced: Int, val failed: Int)
 
 class SyncWorker(
     appContext: Context,
@@ -36,9 +44,9 @@ class SyncWorker(
     override fun createWork(): Single<Result> {
         val importFilesUseCase = sessionScope?.get<ImportFilesUseCase>()
         val scanUseCase: ScanLocalFoldersUseCase by inject()
-        val deduplicateUseCase: CompareAndDeduplicateUseCase by inject()
         val syncedFileDao: SyncedFileDao by inject()
         val syncFolderDao: SyncFolderDao by inject()
+        val syncHistoryDao: SyncHistoryItemDao by inject()
         val notificationsManager: SyncNotificationsManager by inject()
 
         if (importFilesUseCase == null) {
@@ -55,97 +63,139 @@ class SyncWorker(
 
         log.info { "createWork(): session_scope_obtained_import_usecase_ready" }
 
-        val uploadToken = System.currentTimeMillis().toString()
-        var totalSynced = 0
-        var totalFailed = 0
+        val uploadToken = UUID.randomUUID().toString()
+        var startedAt = System.currentTimeMillis()
+        var enabledFolderCount = 0
 
         return Single.fromCallable {
             runBlocking { syncFolderDao.getEnabledFolders() }
         }
             .subscribeOn(Schedulers.io())
             .flatMap { enabledFolders ->
+                enabledFolderCount = enabledFolders.size
                 if (enabledFolders.isEmpty()) {
                     log.info { "createWork(): no_enabled_folders" }
-                    return@flatMap Single.just(Pair(totalSynced, totalFailed))
+                    return@flatMap Single.just(SyncResult(0, 0))
                 }
 
-                // Calculate total pending files across all folders
+                // Feature 1: Calculate total pending files for progress tracking
                 val totalPending = enabledFolders.sumOf { folder ->
                     runBlocking {
                         scanUseCase.countNewFilesByPath(folder.relativePath, syncedFileDao)
                     }
                 }
 
-                if (totalPending == 0) {
-                    log.info { "createWork(): no_pending_files" }
-                    return@flatMap Single.just(Pair(totalSynced, totalFailed))
+                log.info {
+                    "createWork(): total_pending=$totalPending," +
+                            "folders=${enabledFolders.size}"
                 }
+                // Note: Do NOT exit early when totalPending == 0.
+                // processFolder() now handles album (re-)creation before checking for new files,
+                // so we need to visit each folder even when there are 0 pending files.
 
-                var result = Single.just(Pair(0, 0))
+                var chained = Single.just(SyncResult(0, 0))
 
                 for (folder in enabledFolders) {
-                    result = result.flatMap { (synced, failed) ->
-                        totalSynced = synced
-                        totalFailed = failed
-
+                    val innerFolder = folder
+                    chained = chained.flatMap { current ->
                         log.info {
                             "createWork(): processing_folder:" +
-                                    "\nfolder=${folder.displayName}," +
-                                    "\nbucketId=${folder.bucketId}"
+                                    "\nfolder=${innerFolder.displayName}," +
+                                    "\nbucketId=${innerFolder.bucketId}"
                         }
 
                         notificationsManager.notifySyncProgress(
                             uploadToken = uploadToken,
-                            folderName = folder.displayName,
-                            syncedCount = totalSynced,
+                            folderName = innerFolder.displayName,
+                            syncedCount = current.synced,
+                            totalFiles = totalPending,
                         )
 
                         processFolder(
-                            folder = folder,
+                            folder = innerFolder,
                             importFilesUseCase = importFilesUseCase,
                             scanUseCase = scanUseCase,
-                            deduplicateUseCase = deduplicateUseCase,
                             syncedFileDao = syncedFileDao,
                             syncFolderDao = syncFolderDao,
+                            notificationsManager = notificationsManager,
                             uploadToken = uploadToken,
+                            totalFiles = totalPending,
+                            alreadySynced = current.synced,
                         )
                             .map { folderResult ->
-                                Pair(
-                                    totalSynced + folderResult.first,
-                                    totalFailed + folderResult.second
+                                SyncResult(
+                                    synced = current.synced + folderResult.synced,
+                                    failed = current.failed + folderResult.failed,
                                 )
                             }
                     }
                 }
 
-                result
+                chained
             }
-            .map { (synced, failed) ->
-                totalSynced = synced
-                totalFailed = failed
+            .map { result ->
+                // Clean up stale pending records older than 1 hour
+                runBlocking {
+                    syncedFileDao.cleanupPending(
+                        System.currentTimeMillis() - 60 * 60 * 1000
+                    )
+                }
+
+                // Feature 3: Write sync history record
+                val now = System.currentTimeMillis()
+                val historyStatus = when {
+                    result.failed > 0 && result.synced > 0 -> SyncHistoryItem.STATUS_PARTIAL
+                    result.failed > 0 -> SyncHistoryItem.STATUS_FAILED
+                    else -> SyncHistoryItem.STATUS_COMPLETED
+                }
+                val totalFiles = result.synced + result.failed
+                // Always record history, even for 0-file syncs (album re-creation).
+                runBlocking {
+                    syncHistoryDao.insert(
+                        SyncHistoryItem(
+                            startedAt = startedAt,
+                            finishedAt = now,
+                            syncedCount = result.synced,
+                            failedCount = result.failed,
+                            totalFiles = totalFiles,
+                            folderCount = enabledFolderCount,
+                            status = historyStatus,
+                        )
+                    )
+                }
 
                 if (!isStopped) {
-                    if (totalFailed > 0) {
-                        notificationsManager.notifySyncFailed(
-                            uploadToken = uploadToken,
-                            syncedCount = totalSynced,
-                            failedCount = totalFailed,
-                        )
-                    } else if (totalSynced > 0) {
-                        notificationsManager.notifySyncComplete(
-                            uploadToken = uploadToken,
-                            fileCount = totalSynced,
-                        )
+                    when {
+                        result.failed > 0 && result.synced > 0 -> {
+                            notificationsManager.notifySyncFailed(
+                                uploadToken = uploadToken,
+                                syncedCount = result.synced,
+                                failedCount = result.failed,
+                            )
+                        }
+                        result.failed > 0 -> {
+                            notificationsManager.notifySyncFailed(
+                                uploadToken = uploadToken,
+                                syncedCount = 0,
+                                failedCount = result.failed,
+                            )
+                        }
+                        else -> {
+                            notificationsManager.notifySyncComplete(
+                                uploadToken = uploadToken,
+                                fileCount = result.synced,
+                            )
+                        }
                     }
                 }
 
                 log.info {
                     "createWork(): completed:" +
-                            "\nsynced=$totalSynced," +
-                            "\nfailed=$totalFailed"
+                            "\nsynced=${result.synced}," +
+                            "\nfailed=${result.failed}"
                 }
 
-                if (totalFailed > 0 && totalSynced == 0) {
+                if (result.failed > 0 && result.synced == 0) {
                     Result.retry()
                 } else {
                     Result.success()
@@ -153,10 +203,13 @@ class SyncWorker(
             }
             .doOnSubscribe {
                 log.info { "createWork(): starting" }
+                // Use indeterminate progress initially (totalFiles=0)
+                // since totalPending isn't computed yet.
                 notificationsManager.notifySyncProgress(
                     uploadToken = uploadToken,
                     folderName = null,
                     syncedCount = 0,
+                    totalFiles = 0,
                 )
             }
             .onErrorReturn { error ->
@@ -164,8 +217,8 @@ class SyncWorker(
                 if (!isStopped) {
                     notificationsManager.notifySyncFailed(
                         uploadToken = uploadToken,
-                        syncedCount = totalSynced,
-                        failedCount = totalFailed,
+                        syncedCount = 0,
+                        failedCount = 0,
                     )
                 }
                 Result.retry()
@@ -176,13 +229,44 @@ class SyncWorker(
         folder: ua.com.radiokot.photoprism.features.sync.data.model.SyncFolder,
         importFilesUseCase: ImportFilesUseCase,
         scanUseCase: ScanLocalFoldersUseCase,
-        deduplicateUseCase: CompareAndDeduplicateUseCase,
         syncedFileDao: SyncedFileDao,
         syncFolderDao: SyncFolderDao,
+        notificationsManager: SyncNotificationsManager,
         uploadToken: String,
-    ): Single<Pair<Int, Int>> {
+        totalFiles: Int,
+        alreadySynced: Int,
+    ): Single<FolderResult> {
         return Single.fromCallable {
-            // Step 1: Scan folder by relative path (SAF-picked folders use path, not bucket ID)
+            // Bug 1 fix: Ensure album exists on the server BEFORE checking for new files.
+            // This way, even when the album was deleted on the web UI, it gets re-created.
+            val destinationAlbums = try {
+                val albumsService = sessionScope?.get<PhotoPrismAlbumsService>()
+                if (albumsService != null) {
+                    val createdAlbum = runBlocking {
+                        albumsService.createAlbum(
+                            PhotoPrismAlbumCreation(folder.displayName)
+                        )
+                    }
+                    log.info {
+                        "processFolder(): album_created:" +
+                                "title=${folder.displayName}," +
+                                "uid=${createdAlbum.uid}"
+                    }
+                    setOf(
+                        DestinationAlbum.Existing(createdAlbum.uid, createdAlbum.title)
+                    )
+                } else {
+                    setOf(DestinationAlbum.ToCreate(folder.displayName))
+                }
+            } catch (e: Exception) {
+                log.info {
+                    "processFolder(): album_create_fallback_to_tocreate:" +
+                            "title=${folder.displayName}," +
+                            "error=${e.message}"
+                }
+                setOf(DestinationAlbum.ToCreate(folder.displayName))
+            }
+
             val newFiles = scanUseCase.scanByRelativePath(folder.relativePath, syncedFileDao)
                 .filter { it.filePath.isNotBlank() }
 
@@ -194,10 +278,10 @@ class SyncWorker(
             }
 
             if (newFiles.isEmpty()) {
-                return@fromCallable Pair(0, 0)
+                log.info { "processFolder(): no_new_files_album_ensured" }
+                return@fromCallable FolderResult(0, 0)
             }
 
-            // Step 3: Convert to ImportableFile and upload in batches
             val importableFiles = newFiles.map { item ->
                 ImportableFile(
                     contentUri = item.contentUri,
@@ -208,96 +292,107 @@ class SyncWorker(
                 )
             }
 
-            val albums = setOf<DestinationAlbum>(
-                DestinationAlbum.ToCreate(folder.displayName)
-            )
-
             var syncedInFolder = 0
             var failedInFolder = 0
 
-            // Upload in batches of BATCH_SIZE
             val batches = importableFiles.chunked(BATCH_SIZE)
-            log.info {
-                "processFolder(): starting_upload:" +
-                        "folder=${folder.displayName}," +
-                        "total_files=${importableFiles.size}," +
-                        "batches=${batches.size}"
-            }
 
             for (batchIndex in batches.indices) {
+                if (isStopped) {
+                    log.info { "processFolder(): worker_stopped_aborting" }
+                    break
+                }
+
                 val batch = batches[batchIndex]
-                log.info {
-                    "processFolder(): processing_batch:" +
-                            "folder=${folder.displayName}," +
-                            "batch=$batchIndex," +
-                            "batch_size=${batch.size}"
+                val batchNewFiles = newFiles.drop(batchIndex * BATCH_SIZE).take(batch.size)
+
+                // Feature 4: Per-file pending records before upload
+                val pendingEntries = batchNewFiles.map { item ->
+                    SyncedFile(
+                        mediaStoreId = item.mediaStoreId,
+                        filePath = item.filePath,
+                        dateModified = item.dateModified,
+                        sizeBytes = item.sizeBytes,
+                        mimeType = item.mimeType,
+                        bucketId = folder.bucketId,
+                        syncedAt = System.currentTimeMillis(),
+                        status = SyncedFile.STATUS_PENDING,
+                    )
+                }
+                runBlocking {
+                    syncedFileDao.insertAll(pendingEntries)
                 }
 
                 try {
-                    log.debug {
-                        "processFolder(): calling_import_usecase:" +
-                                "folder=${folder.displayName}," +
-                                "batch=$batchIndex," +
-                                "files=${batch.joinToString { it.displayName }}"
-                    }
-
                     importFilesUseCase(
                         files = batch,
-                        albums = albums,
+                        albums = destinationAlbums,
                         uploadToken = "${uploadToken}_${folder.bucketId.toBase64()}_${batchIndex}",
                     ).ignoreElements().blockingAwait(30, TimeUnit.MINUTES)
 
-                    log.debug {
-                        "processFolder(): import_usecase_completed:" +
-                                "folder=${folder.displayName}," +
-                                "batch=$batchIndex"
-                    }
-
-                    // Record synced files
-                    val syncedEntries = batch.mapIndexed { i, file ->
-                        val item = newFiles[batchIndex * BATCH_SIZE + i]
-                        SyncedFile(
-                            mediaStoreId = item.mediaStoreId,
-                            filePath = item.filePath,
-                            dateModified = item.dateModified,
-                            sizeBytes = item.sizeBytes,
-                            mimeType = item.mimeType,
-                            bucketId = item.bucketId,
-                            syncedAt = System.currentTimeMillis(),
-                        )
-                    }
-
                     runBlocking {
-                        syncedFileDao.insertAll(syncedEntries)
+                        syncedFileDao.markCompleted(batchNewFiles.map { it.filePath })
+                    }
+
+                    // Match PhotoPrism hashes for this batch in the background.
+                    try {
+                        val matchUseCase = sessionScope?.get<MatchSyncedFilesUseCase>()
+                        if (matchUseCase != null) {
+                            matchUseCase.match(
+                                filePaths = batchNewFiles.map { it.filePath }
+                            ).subscribe(
+                                { result ->
+                                    log.debug {
+                                        "processFolder(): hash_matching:" +
+                                                "\nmatched=${result.matched}"
+                                    }
+                                },
+                                { error ->
+                                    log.warn(error) {
+                                        "processFolder(): hash_matching_failed"
+                                    }
+                                }
+                            )
+                        }
+                    } catch (e: Exception) {
+                        log.warn(e) { "processFolder(): hash_matching_error" }
                     }
 
                     syncedInFolder += batch.size
+
+                    // Feature 1: Update progress notification with determinate progress
+                    notificationsManager.notifySyncProgress(
+                        uploadToken = uploadToken,
+                        folderName = folder.displayName,
+                        syncedCount = alreadySynced + syncedInFolder,
+                        totalFiles = totalFiles,
+                    )
+
                     log.info {
-                        "processFolder(): batch_uploaded:" +
+                        "processFolder(): batch_succeeded:" +
                                 "folder=${folder.displayName}," +
                                 "batch=$batchIndex," +
                                 "count=${batch.size}"
                     }
                 } catch (e: Exception) {
+                    // Bug fix: Do NOT mark failed files as 'completed'.
+                    // Doing so would prevent re-upload attempts and can create
+                    // duplicate server entries if the upload actually succeeded
+                    // but the response timed out (ImportFilesUseCase retries
+                    // internally up to 6 times). The pending records will be
+                    // cleaned up by the periodic cleanup task.
+
                     failedInFolder += batch.size
+
                     log.error(e) {
                         "processFolder(): batch_failed:" +
                                 "folder=${folder.displayName}," +
                                 "batch=$batchIndex," +
-                                "error=${e.message}," +
-                                "stack=${e.stackTraceToString().take(1000)}"
+                                "error=${e.message}"
                     }
                 }
             }
 
-            log.info {
-                "processFolder(): upload_completed:" +
-                        "folder=${folder.displayName}," +
-                        "synced=$syncedInFolder," +
-                        "failed=$failedInFolder"
-            }
-
-            // Update lastSyncAt
             runBlocking {
                 syncFolderDao.updateLastSync(
                     bucketId = folder.bucketId,
@@ -305,7 +400,7 @@ class SyncWorker(
                 )
             }
 
-            Pair(syncedInFolder, failedInFolder)
+            FolderResult(syncedInFolder, failedInFolder)
         }.subscribeOn(Schedulers.io())
     }
 
@@ -329,7 +424,7 @@ class SyncWorker(
     companion object {
         const val TAG = "Sync"
         const val PERIODIC_TAG = "SyncPeriodic"
-        private const val BATCH_SIZE = 10
+        private const val BATCH_SIZE = 1
 
         private fun String.toBase64(): String =
             android.util.Base64.encodeToString(

@@ -38,6 +38,7 @@ import org.koin.core.scope.Scope
 import ua.com.radiokot.photoprism.BuildConfig
 import ua.com.radiokot.photoprism.R
 import ua.com.radiokot.photoprism.base.view.BaseActivity
+import ua.com.radiokot.photoprism.db.CachedMediaDao
 import ua.com.radiokot.photoprism.di.DI_SCOPE_SESSION
 import ua.com.radiokot.photoprism.env.data.model.EnvSession
 import ua.com.radiokot.photoprism.extension.autoDispose
@@ -112,6 +113,7 @@ class PreferencesFragment :
     private val featureFlags: FeatureFlags by inject()
     private val locale: Locale by inject()
     private val mapPreferences: MapPreferences by inject()
+    private val cachedMediaDao: CachedMediaDao by inject()
 
     private val issueReportingUrl: String = getKoin()
         .getProperty<String>("issueReportingUrl")
@@ -209,6 +211,53 @@ class PreferencesFragment :
         with(requirePreference(R.string.pk_sync)) {
             setOnPreferenceClickListener {
                 startActivity(Intent(requireContext(), SyncSettingsActivity::class.java))
+                true
+            }
+        }
+
+        with(requirePreference(R.string.pk_clear_cache)) {
+            val cachedCount = Completable.defer {
+                val count = cachedMediaDao.getCount()
+                if (count > 0) {
+                    summary = getString(R.string.clear_cache_summary, count)
+                } else {
+                    summary = getString(R.string.clear_cache_summary, 0)
+                }
+                Completable.complete()
+            }
+                .subscribeOn(Schedulers.io())
+                .subscribeBy(onError = { log.error(it) { "Failed to get cache count" } })
+                .autoDispose(viewLifecycleOwner)
+
+            setOnPreferenceClickListener {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setMessage(R.string.clear_cache_confirmation)
+                    .setPositiveButton(R.string.clear) { _, _ ->
+                        log.debug { "clearCache(): clearing" }
+                        Completable.defer {
+                            cachedMediaDao.clearAll()
+                            Completable.complete()
+                        }
+                            .subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribeBy(
+                                onComplete = {
+                                    summary = getString(R.string.clear_cache_summary, 0)
+                                    Snackbar.make(
+                                        listView,
+                                        R.string.cache_cleared,
+                                        Snackbar.LENGTH_SHORT,
+                                    ).show()
+                                },
+                                onError = { error ->
+                                    log.error(error) { "clearCache(): error_occurred" }
+                                    showError(getString(R.string.cache_cleared_error))
+                                }
+                            )
+                            .autoDispose(viewLifecycleOwner)
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
                 true
             }
         }

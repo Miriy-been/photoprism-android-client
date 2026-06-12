@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import kotlinx.coroutines.runBlocking
+import ua.com.radiokot.photoprism.base.util.ConnectivityChecker
+import ua.com.radiokot.photoprism.base.util.ThumbnailDiskCache
 import ua.com.radiokot.photoprism.extension.autoDispose
 import ua.com.radiokot.photoprism.extension.kLogger
 import ua.com.radiokot.photoprism.extension.observeOnMain
@@ -13,12 +16,16 @@ import ua.com.radiokot.photoprism.features.gallery.data.storage.SimpleGalleryMed
 import ua.com.radiokot.photoprism.features.gallery.logic.MediaPreviewUrlFactory
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryListViewModel.Event
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryListViewModel.State
+import ua.com.radiokot.photoprism.features.sync.data.storage.SyncedFileDao
 import ua.com.radiokot.photoprism.util.LocalDate
 import java.util.concurrent.TimeUnit
 
 class GalleryListViewModelImpl(
     galleryPreferences: GalleryPreferences,
     private val previewUrlFactory: MediaPreviewUrlFactory,
+    private val thumbnailDiskCache: ThumbnailDiskCache,
+    private val connectivityChecker: ConnectivityChecker,
+    private val syncedFileDao: SyncedFileDao,
 ) : ViewModel(),
     GalleryListViewModel {
 
@@ -205,6 +212,22 @@ class GalleryListViewModelImpl(
                     }
                 }
 
+                val localThumbnailUri = if (!connectivityChecker.isOnline()) {
+                    galleryMedia.hash?.let { hash ->
+                        // 1. Check thumbnail disk cache (方案A).
+                        thumbnailDiskCache.getUri(hash)
+                            // 2. Check SyncedFile original files (方案B).
+                            ?: runCatching {
+                                runBlocking {
+                                    syncedFileDao.getFilePathByHash(hash)
+                                }
+                            }.getOrNull()
+                                ?.let { android.net.Uri.fromFile(java.io.File(it)) }
+                    }
+                } else {
+                    null
+                }
+
                 add(
                     GalleryListItem.Media(
                         source = galleryMedia,
@@ -213,6 +236,7 @@ class GalleryListViewModelImpl(
                         isMediaSelected = galleryMedia.uid in selectedMediaByUid,
                         itemScale = itemScale,
                         previewUrlFactory = previewUrlFactory,
+                        localThumbnailUri = localThumbnailUri,
                     )
                 )
             }

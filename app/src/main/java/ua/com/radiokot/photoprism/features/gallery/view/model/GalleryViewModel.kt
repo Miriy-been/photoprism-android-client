@@ -11,6 +11,7 @@ import io.reactivex.rxjava3.kotlin.subscribeBy
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import ua.com.radiokot.photoprism.base.util.ConnectivityChecker
 import ua.com.radiokot.photoprism.env.data.model.EnvConnectionParams
 import ua.com.radiokot.photoprism.env.data.model.WebPageInteractionRequiredException
 import ua.com.radiokot.photoprism.extension.autoDispose
@@ -32,6 +33,7 @@ import ua.com.radiokot.photoprism.util.BackPressActionsStack
 
 class GalleryViewModel(
     private val galleryMediaRepositoryFactory: SimpleGalleryMediaRepository.Factory,
+    private val connectivityChecker: ConnectivityChecker,
     private val disconnectFromEnvUseCase: DisconnectFromEnvUseCase,
     private val connectionParams: EnvConnectionParams,
     val searchViewModel: GallerySearchViewModel,
@@ -66,6 +68,9 @@ class GalleryViewModel(
         private set
     val canSeePlaces: Boolean
         get() = featureFlags.hasMap
+
+    private val isOfflineSubject = BehaviorSubject.createDefault(!connectivityChecker.isOnline())
+    val isOffline: Observable<Boolean> = isOfflineSubject.observeOnMain()
 
     private val backPressActionsStack = BackPressActionsStack()
     val backPressedCallback: OnBackPressedCallback =
@@ -207,6 +212,7 @@ class GalleryViewModel(
         subscribeToSearch()
         subscribeToFastScroll()
         subscribeToRepositoryChanges()
+        subscribeToConnectivity()
 
         resetRepositoryAndSearchConfig()
     }
@@ -392,6 +398,26 @@ class GalleryViewModel(
                 memoriesListViewModel.isViewRequired =
                     change is MediaRepositoryChange.ResetToInitial
                             && currentState !is State.Selecting.ForOtherApp
+            }
+            .autoDispose(this)
+    }
+
+    private fun subscribeToConnectivity() {
+        connectivityChecker.observeConnectivity()
+            .observeOn(AndroidSchedulers.mainThread())
+            .distinctUntilChanged()
+            .subscribe { isOnline ->
+                val wasOffline = isOfflineSubject.value ?: false
+                isOfflineSubject.onNext(!isOnline)
+
+                if (!isOnline) {
+                    log.debug { "subscribeToConnectivity(): offline_mode_activated" }
+                } else if (wasOffline) {
+                    // When coming back online, refresh the data automatically.
+                    log.debug { "subscribeToConnectivity(): back_online_refreshing" }
+                    galleryMediaRepositoryFactory.invalidateAllCached()
+                    update(force = true)
+                }
             }
             .autoDispose(this)
     }

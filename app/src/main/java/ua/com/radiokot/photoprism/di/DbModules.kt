@@ -6,6 +6,7 @@ import androidx.room.Room
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import ua.com.radiokot.photoprism.db.AppDatabase
+import ua.com.radiokot.photoprism.db.CachedMediaDao
 import ua.com.radiokot.photoprism.db.roomMigration
 
 val appDbModule = module {
@@ -45,8 +46,49 @@ val appDbModule = module {
                 roomMigration(from = 8, to = 9) {
                     // No schema changes; version bump to match on-disk DB
                 },
+                roomMigration(from = 11, to = 12) {
+                    // No schema changes; version bump after cached_media was added in 9→10
+                },
+                roomMigration(from = 12, to = 13) {
+                    execSQL("ALTER TABLE `cached_media` ADD COLUMN `localThumbnailPath` TEXT")
+                },
+                roomMigration(from = 13, to = 14) {
+                    execSQL("ALTER TABLE `synced_files` ADD COLUMN `photoPrismHash` TEXT")
+                    execSQL("CREATE INDEX IF NOT EXISTS `index_synced_files_photoPrismHash` ON `synced_files` (`photoPrismHash`)")
+                },
+                roomMigration(from = 9, to = 10) {
+                    execSQL("CREATE TABLE IF NOT EXISTS `cached_media` (" +
+                            "`uid` TEXT NOT NULL PRIMARY KEY, " +
+                            "`title` TEXT, " +
+                            "`description` TEXT, " +
+                            "`mediaType` TEXT NOT NULL, " +
+                            "`mediaTypeRaw` TEXT, " +
+                            "`takenAt` TEXT, " +
+                            "`takenAtLocal` TEXT, " +
+                            "`timeZone` TEXT, " +
+                            "`favorite` INTEGER NOT NULL DEFAULT 0, " +
+                            "`isPrivate` INTEGER NOT NULL DEFAULT 0, " +
+                            "`lat` REAL, " +
+                            "`lng` REAL, " +
+                            "`altitude` REAL, " +
+                            "`cameraModel` TEXT, " +
+                            "`cameraMake` TEXT, " +
+                            "`width` INTEGER, " +
+                            "`height` INTEGER, " +
+                            "`fileHash` TEXT, " +
+                            "`cachedAt` INTEGER NOT NULL, " +
+                            "`isReadOnly` INTEGER NOT NULL DEFAULT 0" +
+                            ")")
+                    execSQL("CREATE INDEX IF NOT EXISTS `index_cached_media_takenAtLocal` ON `cached_media` (`takenAtLocal`)")
+                    execSQL("CREATE INDEX IF NOT EXISTS `index_cached_media_favorite` ON `cached_media` (`favorite`)")
+                    execSQL("CREATE INDEX IF NOT EXISTS `index_cached_media_cachedAt` ON `cached_media` (`cachedAt`)")
+                },
             )
             .fallbackToDestructiveMigration()
             .build()
     } bind AppDatabase::class
+
+    single {
+        get<AppDatabase>().cachedMedia()
+    } bind CachedMediaDao::class
 }

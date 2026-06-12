@@ -4,138 +4,55 @@
 
 这是一个 Android 端 [PhotoPrism](https://www.photoprism.app/) 图库客户端，提供便捷的移动端照片浏览体验。它不是 PhotoPrism 官方客户端，而是由社区开发者 Radiokot 维护的开源项目。
 
-## 技术栈
+**包名**: `ua.com.radiokot.photoprism`
+**许可证**: GPLv3
 
-- **语言**: Kotlin 100%
-- **架构**: 传统 View/XML 布局 + ViewModel 模式（非 Jetpack Compose）
-- **异步**: RxJava 3 (RxJava + RxKotlin + RxAndroid)
-- **DI**: Koin (4.1.1)
-- **网络**: OkHttp 5 + Retrofit 3 + Jackson
-- **数据库**: Room (含 kapt 编译器)
-- **图片加载**: Picasso 2.8
-- **视频播放**: ExoPlayer (Media3 1.6.1)
-- **列表**: FastAdapter 5.7.0
-- **地图**: MapLibre GL 12.3.1
-- **日志**: kotlin-logging + slf4j-handroid
-- **权限**: ViewBinding + Parcelize
+**版本身份**:
+| 属性 | 值 |
+|------|-----|
+| versionName | 1.43.0 |
+| versionCode | 67 |
+| minSdk / targetSdk / compileSdk | 21 / 35 / 36 |
 
-## 架构与组织
+**构建类型**: `debug` (后缀 .debug) · `release` · `releaseClone` (共存) · `releasePlay` (仅此可打 AAB)
 
-- **包名**: `ua.com.radiokot.photoprism`
-- **构建**: 基于 Feature 的模块化组织，每个 feature 自包含 data/model/view/viewModel/logic
-- **基类**: `BaseActivity`、`BaseMaterialDialogFragment`
-- **Repository 模式**: 数据存储统一继承 `Repository` 基类
-- **扩展系统**: 基于离线许可证密钥 (Offline License Key) 的扩展激活机制
-- **持久化**: 主要基于 SharedPreferences，部分功能使用 Room 数据库
+**分发渠道**: GitHub Releases · F-Droid · Google Play（无扩展商店）
 
-## 主要 Feature
-
-1. **gallery** - 核心照片/视频时间线图库（网格浏览、日/月分组、快速滚动、拖拽选择）
-2. **search** - 可配置搜索（含搜索书签、搜索建议、标签/人物筛选）
-3. **viewer** - 媒体查看器（全屏查看、滑动切换、Live Photo 支持）
-4. **slideshow** - 幻灯片播放（5 种速度）
-5. **albums** - 相册管理
-6. **labels** - 标签浏览
-7. **people** - 人物选择与浏览
-8. **map** - 地图模式查看（MapLibre）
-9. **import** - 导入照片/视频到 PhotoPrism（通过分享）
-10. **envconnection** - 连接 PhotoPrism 服务器（支持 mTLS、Basic Auth、SSO）
-11. **ext** - 扩展系统（Memories 回忆、Photo Frame Widget 相框小部件、扩展商店）
-
-## 支持的认证方式
-
-- Session Cookie 登录
-- mTLS（双向 TLS）
-- HTTP Basic Auth
-- SSO（Authelia、Cloudflare Access 等）
-
-## 构建配置
-
-- **minSdk**: 21 (Android 5.0+)
-- **targetSdk**: 35
-- **compileSdk**: 36
-- **versionName**: 1.43.0
-- **versionCode**: 67
-- **构建类型**:
-  - `debug` - 调试版 (applicationId 后缀 .debug)
-  - `release` - 发布版
-  - `releaseClone` - 克隆版（可与其他版本共存）
-  - `releasePlay` - Google Play 专用版
-- **多语言**: en, cs, de, el, es, fr, it, pl, ru, tr, uk, zh-Hans, zh-Hant
-
-## 分发渠道
-
-- GitHub Releases (APK 直接下载)
-- F-Droid
-- Google Play（功能受限，无扩展商店支持）
-
-## 许可证
-
-- GPLv3（作者明确反对知识产权概念，但选择 GPLv3 作为防御性工具）
-
-## 关键依赖说明
-
-- Material 组件锁定 1.8.0（更新需检查颜色、资源 ID、搜索栏、底部导航等兼容性）
-- ExoPlayer 锁定 1.6.1（1.8.0 会导致 Live Photo 播放卡顿）
-- Picasso 2.8（非 Coil/Glide）
-- WorkManager 锁定 2.10.5（minSdk 21 兼容性）/ 2.9.0（RxJava 3 集成版本）
-- Preference 库锁定 1.2.1（需同步 Material 覆盖）
+---
 
 ## 开发注意事项
 
 - 使用 ViewBinding，非 DataBinding
-- Tv 兼容性（支持遥控器操作）
-- F-Droid 可重现构建需要特殊处理（profm 文件排序）
-- Google Play 构建限制：仅 `releasePlay` 类型可以构建 AAB
-- 不推荐直接修改主分支的大型重构
+- TV 兼容性（支持遥控器操作）
+- F-Droid 可重现构建需特殊处理 profm 文件排序
+- Google Play 构建限制：仅 `releasePlay` 可构建 AAB
 - 许可证报告自动生成到 `assets/open_source_licenses.html`
-
-## 代码风格约定
-
-- 包名使用全小写
-- Feature 内部结构: `data/` (model + storage) -> `view/` (Activity + ViewModel + Adapter) -> `logic/` (UseCase)
-- 跨 Feature 共享逻辑放在 `base/` 或 `extension/` 目录
-- API 定义统一放在 `api/` 目录下，按 domain 分模块（albums/photos/session 等）
 
 ---
 
 ## 当前开发状态
 
-### 正在进行的任务
-- **UI/UX 全面升级 — 批次 1：全局 Theme & Style 基础**（completed）
-- **UI/UX 全面升级 — 批次 2：底部导航栏重构**（completed）
-- **UI/UX 全面升级 — 批次 3：图库主界面重设计**（completed）
-- **UI/UX 全面升级 — 批次 4：媒体查看器重设计**（completed）
-- **UI/UX 全面升级 — 批次 5：搜索 + 相册 + 标签 + 人物**（completed）
-- **UI/UX 全面升级 — 批次 6：上传 + 设置 + 其余**（completed）
-- **UI/UX 全面升级 — 全部批次完成**
-
-### 已完成
-- 上传图片功能（`features/upload/`）
-  - `UploadFilesActivity` + `UploadFilesViewModel` + 布局
-  - Gallery 导航菜单接入 + FAB 入口
-  - 中文字符串支持
-- 扩展系统密钥自定义（`ParseEnteredKeyUseCase` 中 `yueyueya` 硬编码密钥）
+### 全部完成
+- **UI/UX 全面升级 6 批次**（Theme → 导航栏 → 图库 → 查看器 → 搜索/相册/标签/人物 → 上传/设置）
+- **上传图片功能**（`features/upload/` 含 Activity/ViewModel/布局/中文字符串）
+- **扩展系统密钥自定义**（`ParseEnteredKeyUseCase` 中 `yueyueya` 硬编码密钥）
 
 ### UI 设计系统（侘寂 Wabi-Sabi）
-- **决定**：iOS × 侘寂风格融合，Material 组件体系不变，注入日系克制质感
-- **配色**：和紙 #F6F4EF / 藍鼠 #6B7E8A / 炭灰 #3A3835 / 褪紅 #C1665B
-- **禁止**：深色模式、渐变、纯黑 #000000、高饱和色（仅浅色主题）
-- **字体**：7 级字阶（Large Title 34sp → Caption 2 11sp）
-- **间距**：8dp 基准 6 档（xs/sm/md/lg/xl/2xl）
-- **圆角**：卡片 16dp / 按钮 12dp / 照片 4dp
+- iOS × 侘寂融合，Material 组件体系不变
+- 配色：和紙 #F6F4EF / 藍鼠 #6B7E8A / 炭灰 #3A3835 / 褪紅 #C1665B
+- 禁止：深色模式、渐变、纯黑、高饱和色
+- 字体：7 级（34sp → 11sp）· 间距 8dp 基准 6 档 · 圆角卡片 16dp/按钮 12dp/照片 4dp
 
-### 实现批次
-| 批次 | 内容 | 状态 |
-|------|------|------|
-| 1 | 全局 Theme/Style（colors, themes, styles, dimens） | completed |
-| 2 | 底部导航栏重构 | completed |
-| 3 | 图库主界面重设计 | completed |
-| 4 | 媒体查看器重设计 | completed |
-| 5 | 搜索 + 相册 + 标签 + 人物 | completed |
-| 6 | 上传 + 设置 + 其余 | completed |
+---
 
-### 关键文件
-- 设计规范：`doc/未来规划/design_spec.md`
-- 任务计划：`doc/未来规划/task_plan.md`
-- 进度日志：`doc/未来规划/progress.md`
+## AI Agent 参考文档（编码前必须阅读）
+
+- **[项目总规约](file:///d:/androind-project/photoprism-android-client/doc/项目总规约.md)** — 技术栈/架构/编码规范/UI/约束（核心上下文）
+- **[模块全景](file:///d:/androind-project/photoprism-android-client/doc/模块全景.md)** — 模块划分/依赖关系/入口文件/API 服务
+- **[复用资产清单](file:///d:/androind-project/photoprism-android-client/doc/复用资产清单.md)** — 扩展函数/工具类/基类/组件清单
+- **[Agent 指令集](file:///d:/androind-project/photoprism-android-client/.trae/documents/Agent指令集.md)** — 编码前/中/后标准行为规则
+- **[需求模板](file:///d:/androind-project/photoprism-android-client/.trae/documents/需求模板.md)** — 结构化功能需求模板
+- **[开发工作流程](file:///d:/androind-project/photoprism-android-client/doc/开发工作流程.md)** — 标准 5 步骤流程
+- **[代码审查清单](file:///d:/androind-project/photoprism-android-client/.trae/documents/代码审查清单.md)** — AI 自检清单
+- **[设计规范](file:///d:/androind-project/photoprism-android-client/doc/未来规划/design_spec.md)** — 侘寂风格完整设计系统
+

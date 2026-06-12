@@ -134,6 +134,13 @@
             android:resizeableActivity="true" />
 
         <activity
+            android:name=".features.sync.view.SyncHistoryActivity"
+            android:exported="false"
+            android:label="@string/sync_history_title"
+            android:parentActivityName=".features.sync.view.SyncSettingsActivity"
+            android:resizeableActivity="true" />
+
+        <activity
             android:name=".features.webview.view.WebViewActivity"
             android:exported="false"
             android:resizeableActivity="true" />
@@ -300,6 +307,10 @@
 
         <receiver
             android:name=".features.gallery.view.ShareSheetShareEventReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".features.sync.view.SyncPauseReceiver"
             android:exported="false" />
 
         <receiver

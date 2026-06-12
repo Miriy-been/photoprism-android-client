@@ -22,7 +22,10 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 import ua.com.radiokot.photoprism.R
 import ua.com.radiokot.photoprism.base.view.BaseActivity
 import ua.com.radiokot.photoprism.databinding.ActivitySyncSettingsBinding
+import ua.com.radiokot.photoprism.features.sync.data.storage.SyncPreferencesOnPrefs
 import ua.com.radiokot.photoprism.features.sync.view.model.FolderItem
+import ua.com.radiokot.photoprism.features.sync.view.model.RemoveFolderEvent
+import ua.com.radiokot.photoprism.features.sync.view.model.SyncHistoryDisplay
 import ua.com.radiokot.photoprism.features.sync.view.model.SyncSettingsViewModel
 
 class SyncSettingsActivity : BaseActivity() {
@@ -80,38 +83,90 @@ class SyncSettingsActivity : BaseActivity() {
         subscribeToViewModel()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Issue 1: Refresh pending count when returning to the page
+        viewModel.loadData()
+        viewModel.startAutoRefresh()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.stopAutoRefresh()
+    }
+
     private fun initViews() {
         binding.btnAddFolder.setOnClickListener {
             openFolderPicker()
         }
 
         binding.btnSyncNow.setOnClickListener {
+            if (!checkPermissionsMedia()) {
+                permissionsRequestLauncher.launch(permissionsToRequest())
+                return@setOnClickListener
+            }
             viewModel.onSyncNowClicked()
+        }
+
+        // Navigate to full sync history page
+        binding.layoutHistory.setOnClickListener {
+            startActivity(Intent(this, SyncHistoryActivity::class.java))
         }
 
         binding.switchWifiOnly.isChecked = viewModel.wifiOnly.value ?: true
         binding.switchWifiOnly.setOnCheckedChangeListener { _, isChecked ->
             viewModel.toggleWifiOnly(isChecked)
         }
+
+        // Sync interval selector
+        setupSyncIntervalSelector()
+    }
+
+    private fun setupSyncIntervalSelector() {
+        val currentInterval = viewModel.syncIntervalMin.value ?: SyncPreferencesOnPrefs.INTERVAL_2_HOURS
+        val labels = SyncPreferencesOnPrefs.INTERVAL_OPTIONS.map {
+            getString(SyncPreferencesOnPrefs.intervalLabelRes(it))
+        }
+        val currentIndex = SyncPreferencesOnPrefs.INTERVAL_OPTIONS.indexOf(currentInterval).coerceAtLeast(0)
+
+        binding.tvSyncIntervalValue.text = labels[currentIndex]
+        binding.layoutSyncInterval.setOnClickListener {
+            // Show a simple dialog to pick interval
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.sync_interval_title)
+                .setSingleChoiceItems(
+                    labels.toTypedArray(),
+                    currentIndex,
+                ) { dialog, which ->
+                    val selected = SyncPreferencesOnPrefs.INTERVAL_OPTIONS[which]
+                    binding.tvSyncIntervalValue.text = labels[which]
+                    viewModel.setSyncInterval(selected)
+                    dialog.dismiss()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
     }
 
     private fun updateSyncButtonState() {
-        val pending = viewModel.totalPendingCount.value ?: 0
         val syncing = viewModel.isSyncing.value ?: false
-        
+
         if (syncing) {
-            binding.btnSyncNow.isEnabled = false
-            binding.btnSyncNow.text = getString(R.string.sync_syncing)
+            // Bug 9: Show "Stop sync" instead of disabled "Syncing..."
+            binding.btnSyncNow.isEnabled = true
+            binding.btnSyncNow.text = getString(R.string.sync_stop)
         } else {
-            binding.btnSyncNow.isEnabled = pending > 0
+            // Always enable the sync button — the Worker handles album
+            // re-creation on the server even when there are 0 pending files.
+            binding.btnSyncNow.isEnabled = true
             binding.btnSyncNow.text = getString(R.string.sync_now)
         }
     }
 
     private fun openFolderPicker() {
-        if (!checkPermissions(false)) {
+        if (!checkPermissionsMedia()) {
             pendingOpenFolderPicker = true
-            permissionsRequestLauncher.launch(permissionsToRequest())
+            permissionsRequestLauncher.launch(permissionsToMediaOnly())
             return
         }
         openFolderPickerInternal()
@@ -145,7 +200,30 @@ class SyncSettingsActivity : BaseActivity() {
         return allGranted
     }
 
+    /**
+     * Permissions needed before starting a sync (includes notification on Android 13+).
+     */
     private fun permissionsToRequest(): Array<String> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val list = mutableListOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VIDEO,
+        )
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            list += Manifest.permission.POST_NOTIFICATIONS
+        }
+        list.toTypedArray()
+    } else {
+        arrayOf(
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+        )
+    }
+
+    /**
+     * Permissions needed only for scanning MediaStore (no notification).
+     */
+    private fun permissionsToMediaOnly(): Array<String> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_VIDEO,
@@ -154,6 +232,13 @@ class SyncSettingsActivity : BaseActivity() {
         arrayOf(
             Manifest.permission.READ_EXTERNAL_STORAGE,
         )
+    }
+
+    private fun checkPermissionsMedia(): Boolean {
+        val permissions = permissionsToMediaOnly()
+        return permissions.all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -246,7 +331,67 @@ class SyncSettingsActivity : BaseActivity() {
                         Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
                     }
                 },
+
+            viewModel.syncHistory
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { history ->
+                    renderSyncHistory(history)
+                },
+
+            viewModel.showMeteredDataWarningEvent
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { show ->
+                    if (show) {
+                        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                            .setTitle(R.string.sync_metered_warning_title)
+                            .setMessage(R.string.sync_metered_warning_message)
+                            .setCancelable(true)
+                            .setPositiveButton(R.string.sync_metered_warning_continue) { _, _ ->
+                                viewModel.onMeteredSyncConfirmed()
+                            }
+                            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                                viewModel.onMeteredSyncCancelled()
+                            }
+                            .setOnDismissListener {
+                                viewModel.onMeteredSyncCancelled()
+                            }
+                            .show()
+                    }
+                },
+
+            // Show a confirmation dialog before removing a folder
+            viewModel.showRemoveFolderConfirmationEvent
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { event ->
+                    if (event is RemoveFolderEvent.Show) {
+                        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                            .setTitle(R.string.sync_remove_folder_title)
+                            .setMessage(getString(R.string.sync_remove_folder_message, event.displayName))
+                            .setCancelable(true)
+                            .setPositiveButton(R.string.sync_remove_folder_confirm) { _, _ ->
+                                viewModel.confirmRemoveFolder(event.bucketId)
+                            }
+                            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                                viewModel.cancelRemoveFolder()
+                            }
+                            .setOnDismissListener {
+                                viewModel.cancelRemoveFolder()
+                            }
+                            .show()
+                    }
+                },
         )
+    }
+
+    private fun renderSyncHistory(history: List<SyncHistoryDisplay>) {
+        val totalEntries = history.size
+        if (totalEntries == 0) {
+            binding.tvHistorySummary.text = getString(R.string.sync_history_empty)
+        } else {
+            val latest = history.first()
+            val status = viewModel.formatHistoryStatus(latest.status)
+            binding.tvHistorySummary.text = "$status ${latest.startedAt} — ${latest.syncedCount}/${latest.totalFiles}"
+        }
     }
 
     private fun renderFolderTags(enabledFolders: List<FolderItem>) {
@@ -278,8 +423,10 @@ class SyncSettingsActivity : BaseActivity() {
             tvPath.text = folder.relativePath
 
             cb.isChecked = true
-            cb.setOnCheckedChangeListener { _, _ ->
-                viewModel.removeFolder(folder.bucketId)
+            cb.setOnCheckedChangeListener { _, isChecked ->
+                if (!isChecked) {
+                    viewModel.removeFolder(folder.bucketId, folder.displayName)
+                }
             }
 
             if (folder.pendingCount > 0) {

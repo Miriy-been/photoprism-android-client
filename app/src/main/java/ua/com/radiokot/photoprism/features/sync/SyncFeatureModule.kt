@@ -10,10 +10,10 @@ import org.koin.dsl.module
 import ua.com.radiokot.photoprism.db.AppDatabase
 import ua.com.radiokot.photoprism.di.APP_NO_BACKUP_PREFERENCES
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
+import ua.com.radiokot.photoprism.features.sync.data.storage.SyncHistoryItemDao
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncPreferencesOnPrefs
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncedFileDao
 import ua.com.radiokot.photoprism.features.sync.logic.CancelSyncUseCase
-import ua.com.radiokot.photoprism.features.sync.logic.CompareAndDeduplicateUseCase
 import ua.com.radiokot.photoprism.features.sync.logic.ScanLocalFoldersUseCase
 import ua.com.radiokot.photoprism.features.sync.logic.ScheduleSyncUseCase
 import ua.com.radiokot.photoprism.features.sync.view.SyncNotificationsManager
@@ -29,14 +29,12 @@ val syncFeatureModule: Module = module {
     } bind SyncFolderDao::class
 
     single {
-        SyncPreferencesOnPrefs(
-            sharedPreferences = get(named(APP_NO_BACKUP_PREFERENCES)),
-        )
-    }
+        get<AppDatabase>().syncHistory()
+    } bind SyncHistoryItemDao::class
 
     single {
-        CompareAndDeduplicateUseCase(
-            syncedFileDao = get(),
+        SyncPreferencesOnPrefs(
+            sharedPreferences = get(named(APP_NO_BACKUP_PREFERENCES)),
         )
     }
 
@@ -70,7 +68,9 @@ val syncFeatureModule: Module = module {
             scanLocalFoldersUseCase = get(),
             syncedFileDao = get(),
             syncFolderDao = get(),
+            syncHistoryDao = get(),
             syncPreferences = get(),
+            scheduleSyncUseCase = get(),
             workManager = get(),
         )
     }

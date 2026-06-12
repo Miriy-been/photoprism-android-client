@@ -56,6 +56,37 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- 离线提示横幅 — 断网时显示 -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/offline_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/wabi_accent_light"
+        app:cardElevation="0dp"
+        app:cardCornerRadius="0dp"
+        app:strokeWidth="0dp"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="6dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/offline_banner"
+                android:textAppearance="@style/TextAppearance.Wabi.Caption1"
+                android:textColor="@color/wabi_bg_card" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <!-- Invisible visibility is important for this FAB.
     Without it there is no initial show animation.
     It also must be placed before the SearchView -->

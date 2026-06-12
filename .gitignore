@@ -32,9 +32,31 @@ proguard/
 # 排除.trae文件,logs
 .trae/
 logs/
+# Kotlin compiler cache
+.kotlin/
+.agents
+skills-lock.json
 
 # Log Files
 *.log
+
+# Java heap dump (Android Studio Profiler / jmap)
+*.hprof
+
+# Android native crash dumps
+*.crash
+
+# Windows thumbnail cache and folder settings
+Thumbs.db
+Desktop.ini
+
+# Editor backup files (vim, etc.)
+*.swp
+*.swo
+*~
+
+# NDK/CMake native build artifacts
+.cxx/
 
 # Android Studio Navigation editor temp files
 .navigation/

@@ -27,6 +27,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 import ua.com.radiokot.photoprism.BuildConfig
 import ua.com.radiokot.photoprism.api.util.HeaderInterceptor
+import ua.com.radiokot.photoprism.base.util.ConnectivityChecker
 import ua.com.radiokot.photoprism.util.LocalDate
 import ua.com.radiokot.photoprism.util.WebViewCookieJar
 import java.io.File
@@ -161,5 +162,12 @@ val ioModules: List<Module> = listOf(
         single {
             WorkManager.getInstance(androidApplication())
         } bind WorkManager::class
+    },
+
+    // Connectivity.
+    module {
+        single {
+            ConnectivityChecker(androidApplication())
+        }
     },
 )

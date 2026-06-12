@@ -31,6 +31,8 @@ class ScheduleSyncUseCase(
 
     private fun buildRequest(): androidx.work.PeriodicWorkRequest {
         val wifiOnly = syncPreferences.wifiOnly.value ?: true
+        val intervalMin = syncPreferences.syncIntervalMin.value
+            ?: SyncPreferencesOnPrefs.INTERVAL_2_HOURS
 
         val constraints = if (wifiOnly) {
             Constraints.Builder()
@@ -52,7 +54,7 @@ class ScheduleSyncUseCase(
                 .build()
         }
 
-        return PeriodicWorkRequestBuilder<SyncWorker>(2, TimeUnit.HOURS)
+        return PeriodicWorkRequestBuilder<SyncWorker>(intervalMin.toLong(), TimeUnit.MINUTES)
             .setConstraints(constraints)
             .addTag(SyncWorker.PERIODIC_TAG)
             .build()

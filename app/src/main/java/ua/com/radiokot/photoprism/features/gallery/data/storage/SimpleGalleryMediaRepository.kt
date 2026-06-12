@@ -8,6 +8,7 @@ import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.toCompletable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.parcelize.Parcelize
+import okhttp3.Request
 import ua.com.radiokot.photoprism.api.model.PhotoPrismOrder
 import ua.com.radiokot.photoprism.api.photos.model.PhotoPrismBatchPhotoEdit
 import ua.com.radiokot.photoprism.api.photos.model.PhotoPrismBatchPhotoUids
@@ -17,6 +18,10 @@ import ua.com.radiokot.photoprism.base.data.model.DataPage
 import ua.com.radiokot.photoprism.base.data.model.PagingOrder
 import ua.com.radiokot.photoprism.base.data.storage.Repository
 import ua.com.radiokot.photoprism.base.data.storage.SimplePagedDataRepository
+import ua.com.radiokot.photoprism.base.util.ConnectivityChecker
+import ua.com.radiokot.photoprism.base.util.ThumbnailDiskCache
+import ua.com.radiokot.photoprism.db.CachedMediaDao
+import ua.com.radiokot.photoprism.di.HttpClient
 import ua.com.radiokot.photoprism.env.data.model.WebPageInteractionRequiredException
 import ua.com.radiokot.photoprism.extension.checkNotNull
 import ua.com.radiokot.photoprism.extension.kLogger
@@ -27,6 +32,7 @@ import ua.com.radiokot.photoprism.features.gallery.data.model.GalleryItemsOrder
 import ua.com.radiokot.photoprism.features.gallery.data.model.GalleryMedia
 import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
 import ua.com.radiokot.photoprism.features.gallery.data.model.parsePhotoPrismDate
+import ua.com.radiokot.photoprism.features.gallery.logic.MediaPreviewUrlFactory
 import ua.com.radiokot.photoprism.features.people.data.model.Person
 import ua.com.radiokot.photoprism.util.LocalDate
 import java.lang.ref.WeakReference
@@ -36,6 +42,11 @@ import java.lang.ref.WeakReference
  */
 class SimpleGalleryMediaRepository(
     private val photoPrismPhotosService: PhotoPrismPhotosService,
+    private val cachedMediaDao: CachedMediaDao,
+    private val connectivityChecker: ConnectivityChecker,
+    private val httpClient: HttpClient,
+    private val previewUrlFactory: MediaPreviewUrlFactory,
+    private val thumbnailDiskCache: ThumbnailDiskCache,
     val params: Params,
 ) : SimplePagedDataRepository<GalleryMedia>(
     pagingOrder = when (params.itemsOrder) {
@@ -53,6 +64,21 @@ class SimpleGalleryMediaRepository(
     private val itemsByUid = mutableMapOf<String, GalleryMedia>()
 
     override fun getPage(
+        limit: Int,
+        cursor: String?,
+        order: PagingOrder
+    ): Single<DataPage<GalleryMedia>> {
+        if (!connectivityChecker.isOnline()) {
+            return getOfflinePage(limit, cursor)
+        }
+
+        return getOnlinePage(limit, cursor, order)
+            .doOnSuccess { page ->
+                cachePageItems(page.items)
+            }
+    }
+
+    private fun getOnlinePage(
         limit: Int,
         cursor: String?,
         order: PagingOrder
@@ -173,6 +199,112 @@ class SimpleGalleryMediaRepository(
                     isLast = pageIsLast,
                 )
             }
+    }
+
+    private fun getOfflinePage(
+        limit: Int,
+        cursor: String?,
+    ): Single<DataPage<GalleryMedia>> {
+        val offset = cursor?.toIntOrNull() ?: 0
+
+        log.debug {
+            "getOfflinePage(): loading_from_cache:" +
+                    "\noffset=$offset," +
+                    "\nlimit=$limit"
+        }
+
+        return Single.fromCallable {
+            val cachedEntities = cachedMediaDao.getAllOrderedByDate(limit, offset)
+            val items = cachedEntities.map { it.toGalleryMedia() }
+            val isLast = cachedEntities.size < limit
+
+            DataPage(
+                items = items,
+                nextCursor = (offset + limit).toString(),
+                isLast = isLast,
+            )
+        }
+    }
+
+    /**
+     * Writes the loaded page items to the Room cache and enforces LRU eviction.
+     * Also triggers background thumbnail downloads for offline viewing.
+     */
+    private fun cachePageItems(items: List<GalleryMedia>) {
+        try {
+            val entities = items.map { it.toCachedEntity() }
+            cachedMediaDao.upsertAll(entities)
+
+            // LRU eviction: if cache exceeds the limit, remove the oldest entries.
+            val currentCount = cachedMediaDao.getCount()
+            if (currentCount > MAX_CACHED_ITEMS) {
+                cachedMediaDao.deleteOldest(currentCount - MAX_CACHED_ITEMS)
+            }
+
+            log.debug {
+                "cachePageItems(): cached_items:" +
+                        "\nitemsCount=${items.size}," +
+                        "\ntotalCached=$currentCount"
+            }
+
+            // Download thumbnails for offline viewing in the background.
+            downloadThumbnailsForCache(items)
+        } catch (e: Exception) {
+            log.error(e) { "cachePageItems(): failed_to_cache" }
+        }
+    }
+
+    /**
+     * Downloads thumbnails for the given items in the background
+     * and records their local paths in the Room cache.
+     */
+    private fun downloadThumbnailsForCache(items: List<GalleryMedia>) {
+        items
+            .forEach { media ->
+                val hash = media.hash ?: return@forEach
+
+                // Skip if already cached locally.
+                if (thumbnailDiskCache.getFile(hash) != null) {
+                    return@forEach
+                }
+
+                downloadThumbnailAsync(hash, media.uid)
+            }
+    }
+
+    private fun downloadThumbnailAsync(hash: String, uid: String) {
+        val url = previewUrlFactory.getThumbnailUrl(hash, 250)
+
+        Single.fromCallable {
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .build()
+
+            httpClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val bytes = response.body?.bytes()
+                    if (bytes != null) {
+                        val file = thumbnailDiskCache.save(hash, bytes)
+                        cachedMediaDao.updateLocalThumbnailPath(uid, file.absolutePath)
+                        log.debug { "downloadThumbnailAsync(): cached_thumbnail:$hash" }
+                    }
+                } else {
+                    log.warn {
+                        "downloadThumbnailAsync(): failed_response:" +
+                                "\ncode=${response.code}," +
+                                "\nhash=$hash"
+                    }
+                }
+            }
+        }
+            .subscribeOn(Schedulers.io())
+            .subscribe(
+                { /* completed */ },
+                { error ->
+                    log.warn(error) { "downloadThumbnailAsync(): failed:$hash" }
+                }
+            )
     }
 
     private var newestAndOldestDates: Pair<LocalDate, LocalDate>? = null
@@ -389,8 +521,21 @@ class SimpleGalleryMediaRepository(
         }
     }
 
+    companion object {
+        /**
+         * Maximum number of items to keep in the offline cache.
+         * When exceeded, the oldest entries are evicted (LRU).
+         */
+        const val MAX_CACHED_ITEMS = 5_000
+    }
+
     class Factory(
         private val photoPrismPhotosService: PhotoPrismPhotosService,
+        private val cachedMediaDao: CachedMediaDao,
+        private val connectivityChecker: ConnectivityChecker,
+        private val httpClient: HttpClient,
+        private val previewUrlFactory: MediaPreviewUrlFactory,
+        private val thumbnailDiskCache: ThumbnailDiskCache,
     ) {
         private val cache = LruCache<String, SimpleGalleryMediaRepository>(10)
         private val weakReferences =
@@ -422,6 +567,11 @@ class SimpleGalleryMediaRepository(
             params: Params = Params(),
         ) = SimpleGalleryMediaRepository(
             photoPrismPhotosService = photoPrismPhotosService,
+            cachedMediaDao = cachedMediaDao,
+            connectivityChecker = connectivityChecker,
+            httpClient = httpClient,
+            previewUrlFactory = previewUrlFactory,
+            thumbnailDiskCache = thumbnailDiskCache,
             params = params,
         )
 

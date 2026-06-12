@@ -9,6 +9,7 @@ import ua.com.radiokot.photoprism.env.data.model.EnvSession
 import ua.com.radiokot.photoprism.features.albums.albumsFeatureModule
 import ua.com.radiokot.photoprism.features.importt.logic.ImportFilesUseCase
 import ua.com.radiokot.photoprism.features.importt.logic.ParseImportIntentUseCase
+import ua.com.radiokot.photoprism.features.sync.logic.MatchSyncedFilesUseCase
 import ua.com.radiokot.photoprism.features.importt.view.ImportNotificationsManager
 import ua.com.radiokot.photoprism.features.importt.view.model.ImportViewModel
 
@@ -24,6 +25,13 @@ val importFeatureModule = module {
                 albumsRepository = getOrNull(),
             )
         } bind ImportFilesUseCase::class
+
+        scoped {
+            MatchSyncedFilesUseCase(
+                syncedFileDao = get(),
+                photoPrismPhotosService = get(),
+            )
+        } bind MatchSyncedFilesUseCase::class
 
         viewModelOf(::ImportViewModel)
     }

@@ -25,6 +25,9 @@ interface SyncFolderDao {
     @Query("UPDATE sync_folders SET isEnabled = :enabled WHERE bucketId = :bucketId")
     suspend fun setEnabled(bucketId: String, enabled: Boolean)
 
+    @Query("SELECT * FROM sync_folders WHERE bucketId = :bucketId")
+    suspend fun getByBucketId(bucketId: String): SyncFolder?
+
     @Query("DELETE FROM sync_folders WHERE bucketId = :bucketId")
     suspend fun delete(bucketId: String)
 

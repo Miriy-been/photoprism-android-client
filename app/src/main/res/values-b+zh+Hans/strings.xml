@@ -351,8 +351,38 @@
     <string name="sync_failed_text">%d 张照片未能上传</string>
     <string name="sync_failed_partial_text">%1$d 张已上传，%2$d 张失败</string>
     <string name="sync_permission_denied">需要存储权限才能扫描照片进行同步</string>
+    <string name="sync_notification_cancel">取消</string>
+    <string name="sync_notification_pause">暂停</string>
+    <string name="sync_paused_title">同步已暂停</string>
+    <string name="sync_stop">暂停同步</string>
+    <string name="sync_interval_title">自动同步间隔</string>
+    <string name="sync_interval_manual">仅手动</string>
+    <string name="sync_interval_30min">每 30 分钟</string>
+    <string name="sync_interval_1h">每小时</string>
+    <string name="sync_interval_2h">每 2 小时</string>
+    <string name="sync_interval_4h">每 4 小时</string>
+    <string name="sync_history_title">同步历史</string>
+    <string name="sync_history_summary">查看同步记录</string>
+    <string name="sync_history_empty">暂无同步记录</string>
+    <string name="sync_history_item_format">已同步 %1$d/%2$d</string>
+    <string name="sync_history_item_failed">（%1$d 失败）</string>
+    <string name="sync_history_load_failed">加载历史记录失败</string>
+    <string name="sync_metered_warning_title">非 Wi-Fi 网络</string>
+    <string name="sync_metered_warning_message">您当前使用的是移动数据或计次网络，同步可能消耗较多流量。确定继续吗？</string>
+    <string name="sync_metered_warning_continue">继续同步</string>
+    <string name="sync_remove_folder_title">移除文件夹？</string>
+    <string name="sync_remove_folder_message">将停止同步\"%s\"并清除其同步记录。确定移除吗？</string>
+    <string name="sync_remove_folder_confirm">移除</string>
     <plurals name="sync_notification_progress_count">
         <item quantity="other">已同步 %d 张照片</item>
     </plurals>
+
+    <!-- 缓存 -->
+    <string name="offline_banner">无网络连接 — 正在显示缓存的照片</string>
+    <string name="clear_cache">清除缓存</string>
+    <string name="clear_cache_summary">%1$d 个缓存项</string>
+    <string name="clear_cache_confirmation">确定要清除所有缓存的照片吗？它们将在需要时重新下载。</string>
+    <string name="cache_cleared">缓存已清除</string>
+    <string name="cache_cleared_error">清除缓存失败</string>
 
 </resources>

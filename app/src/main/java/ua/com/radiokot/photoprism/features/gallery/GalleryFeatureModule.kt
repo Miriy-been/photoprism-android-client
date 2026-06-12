@@ -1,5 +1,6 @@
 package ua.com.radiokot.photoprism.features.gallery
 
+import android.content.Context
 import android.net.Uri
 import org.koin.core.module.dsl.scopedOf
 import org.koin.core.module.dsl.singleOf
@@ -9,10 +10,12 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import ua.com.radiokot.photoprism.BuildConfig
+import ua.com.radiokot.photoprism.base.util.ThumbnailDiskCache
 import ua.com.radiokot.photoprism.di.APP_NO_BACKUP_PREFERENCES
 import ua.com.radiokot.photoprism.di.EXTERNAL_DOWNLOADS_DIRECTORY
 import ua.com.radiokot.photoprism.di.INTERNAL_DOWNLOADS_DIRECTORY
 import ua.com.radiokot.photoprism.di.SelfParameterHolder
+import ua.com.radiokot.photoprism.db.CachedMediaDao
 import ua.com.radiokot.photoprism.di.dateFormatModule
 import ua.com.radiokot.photoprism.env.data.model.EnvSession
 import ua.com.radiokot.photoprism.features.envconnection.di.envConnectionFeatureModule
@@ -126,8 +129,22 @@ val galleryFeatureModule = module {
         scopedOf(::OkHttpObservableDownloader) bind ObservableDownloader::class
 
         scoped {
+            ThumbnailDiskCache(
+                thumbnailsDir = java.io.File(
+                    get<Context>().cacheDir,
+                    "thumbnail_disk_cache",
+                ),
+            )
+        } bind ThumbnailDiskCache::class
+
+        scoped {
             SimpleGalleryMediaRepository.Factory(
                 photoPrismPhotosService = get(),
+                cachedMediaDao = get(),
+                connectivityChecker = get(),
+                httpClient = get(),
+                previewUrlFactory = get(),
+                thumbnailDiskCache = get(),
             )
         } bind SimpleGalleryMediaRepository.Factory::class
 
@@ -143,7 +160,15 @@ val galleryFeatureModule = module {
 
         viewModelOf(::GalleryFastScrollViewModel)
 
-        viewModelOf(::GalleryListViewModelImpl) bind GalleryListViewModel::class
+        viewModel {
+            GalleryListViewModelImpl(
+                galleryPreferences = get(),
+                previewUrlFactory = get(),
+                thumbnailDiskCache = get(),
+                connectivityChecker = get(),
+                syncedFileDao = get(),
+            )
+        } bind GalleryListViewModel::class
 
         viewModel {
             GalleryMediaDownloadActionsViewModelDelegateImpl(
@@ -162,10 +187,11 @@ val galleryFeatureModule = module {
         viewModel {
             GalleryViewModel(
                 galleryMediaRepositoryFactory = get(),
+                connectivityChecker = get(),
+                disconnectFromEnvUseCase = get(),
                 connectionParams = get<EnvSession>().envConnectionParams,
                 searchViewModel = get(),
                 fastScrollViewModel = get(),
-                disconnectFromEnvUseCase = get(),
                 memoriesListViewModel = get(),
                 listViewModel = get(),
                 galleryMediaDownloadActionsViewModel = get(),

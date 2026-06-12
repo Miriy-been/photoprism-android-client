@@ -62,6 +62,7 @@
     <string name="template_error_failed_to_edit_bookmark">Failed to edit the bookmark: %1$s</string>
     <string name="template_error_failed_to_delete_bookmark">Failed to delete the bookmark: %1$s</string>
     <string name="how_to_search_the_library">How to search the library</string>
+    <string name="offline_banner">No internet — showing cached photos</string>
     <string name="some_types_are_not_available_when_selecting">Only types supported by the requesting app are available</string>
     <string name="include_private_content">Include private content</string>
     <string name="only_favorite_content">Only favorite</string>
@@ -251,6 +252,11 @@
     <!-- Sync -->
     <string name="sync_settings">Sync settings</string>
     <string name="sync_settings_summary">Auto-sync phone photos to PhotoPrism</string>
+    <string name="clear_cache">Clear cache</string>
+    <string name="clear_cache_summary">%1$d cached items</string>
+    <string name="clear_cache_confirmation">Are you sure you want to clear all cached photos? They will be downloaded again when needed.</string>
+    <string name="cache_cleared">Cache cleared</string>
+    <string name="cache_cleared_error">Failed to clear cache</string>
     <string name="sync_now">Sync now</string>
     <string name="sync_syncing">Syncing…</string>
     <string name="sync_last_sync">Last sync</string>
@@ -276,6 +282,28 @@
         <item quantity="one">%d photo synced</item>
         <item quantity="other">%d photos synced</item>
     </plurals>
+    <string name="sync_notification_cancel">Cancel</string>
+    <string name="sync_notification_pause">Pause</string>
+    <string name="sync_paused_title">Sync paused</string>
+    <string name="sync_stop">Pause sync</string>
+    <string name="sync_interval_title">Auto-sync interval</string>
+    <string name="sync_interval_manual">Manual only</string>
+    <string name="sync_interval_30min">Every 30 minutes</string>
+    <string name="sync_interval_1h">Every hour</string>
+    <string name="sync_interval_2h">Every 2 hours</string>
+    <string name="sync_interval_4h">Every 4 hours</string>
+    <string name="sync_history_title">Sync history</string>
+    <string name="sync_history_summary">View past sync records</string>
+    <string name="sync_history_empty">No sync history yet</string>
+    <string name="sync_history_item_format">%1$d/%2$d synced</string>
+    <string name="sync_history_item_failed">(%1$d failed)</string>
+    <string name="sync_history_load_failed">Failed to load history</string>
+    <string name="sync_metered_warning_title">Metered network</string>
+    <string name="sync_metered_warning_message">You\'re on mobile data or a metered Wi-Fi network. Syncing may use significant data. Continue?</string>
+    <string name="sync_metered_warning_continue">Continue</string>
+    <string name="sync_remove_folder_title">Remove folder?</string>
+    <string name="sync_remove_folder_message">This will stop syncing \"%s\" and clear its sync history. Are you sure?</string>
+    <string name="sync_remove_folder_confirm">Remove</string>
     <string name="photo_frame_widget_name">Photo frame</string>
     <string name="photo_frame_widget_description">Shows a random photo changed once every few hours</string>
     <string name="photos">Photos</string>

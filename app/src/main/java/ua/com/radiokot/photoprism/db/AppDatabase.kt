@@ -8,18 +8,22 @@ import ua.com.radiokot.photoprism.features.ext.memories.data.model.MemoryDbEntit
 import ua.com.radiokot.photoprism.features.ext.memories.data.storage.MemoriesDbDao
 import ua.com.radiokot.photoprism.features.gallery.data.model.SearchBookmarksDbEntity
 import ua.com.radiokot.photoprism.features.gallery.data.storage.SearchBookmarksDbDao
+import ua.com.radiokot.photoprism.features.sync.data.model.SyncHistoryItem
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncedFile
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncFolder
+import ua.com.radiokot.photoprism.features.sync.data.storage.SyncHistoryItemDao
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncedFileDao
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
 
 @Database(
-    version = 9,
+    version = 14,
     entities = [
         SearchBookmarksDbEntity::class,
         MemoryDbEntity::class,
         SyncedFile::class,
         SyncFolder::class,
+        SyncHistoryItem::class,
+        CachedMediaEntity::class,
     ],
     autoMigrations = [
         AutoMigration(from = 4, to = 5),
@@ -39,4 +43,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun memories(): MemoriesDbDao
     abstract fun syncedFiles(): SyncedFileDao
     abstract fun syncFolders(): SyncFolderDao
+    abstract fun syncHistory(): SyncHistoryItemDao
+    abstract fun cachedMedia(): CachedMediaDao
 }

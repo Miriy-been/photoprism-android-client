@@ -306,4 +306,12 @@
     <string name="see_photos_nearby_action">附近照片</string>
     <string name="is_private">私有</string>
 
+    <!-- 快取 -->
+    <string name="offline_banner">無網路連線 — 正在顯示快取的照片</string>
+    <string name="clear_cache">清除快取</string>
+    <string name="clear_cache_summary">%1$d 個快取項目</string>
+    <string name="clear_cache_confirmation">確定要清除所有快取的照片嗎？它們將在需要時重新下載。</string>
+    <string name="cache_cleared">快取已清除</string>
+    <string name="cache_cleared_error">清除快取失敗</string>
+
 </resources>

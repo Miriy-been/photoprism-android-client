@@ -233,7 +233,7 @@ class ScanLocalFoldersUseCase(
 
     /**
      * Counts new (not yet synced) files in a folder by its relative path.
-     * Uses MediaStore RELATIVE_PATH matching.
+     * Uses MediaStore RELATIVE_PATH matching with BUCKET_DISPLAY_NAME fallback.
      */
     fun countNewFilesByPath(relativePath: String, syncedFileDao: SyncedFileDao): Int {
         val mediaItems = mutableListOf<LocalMediaItem>()
@@ -251,7 +251,41 @@ class ScanLocalFoldersUseCase(
             destination = mediaItems,
         )
 
-        if (mediaItems.isEmpty()) return 0
+        if (mediaItems.isEmpty()) {
+            // Bug 2 fix: Fallback to BUCKET_DISPLAY_NAME when RELATIVE_PATH query returns 0.
+            // Some devices/vendors may store paths differently in RELATIVE_PATH.
+            val folderName = relativePath.trimEnd('/').split('/').lastOrNull()
+            if (folderName != null) {
+                log.warn {
+                    "countNewFilesByPath: RELATIVE_PATH returned 0 " +
+                            "for path='$relativePath', " +
+                            "falling back to BUCKET_DISPLAY_NAME='$folderName'"
+                }
+                queryMediaByDisplayName(
+                    uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection = IMAGES_PROJECTION,
+                    displayName = folderName,
+                    destination = mediaItems,
+                )
+                queryMediaByDisplayName(
+                    uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    projection = VIDEO_PROJECTION,
+                    displayName = folderName,
+                    destination = mediaItems,
+                )
+            } else {
+                log.warn {
+                    "countNewFilesByPath: RELATIVE_PATH returned 0 " +
+                            "for path='$relativePath', " +
+                            "could not extract folder name for fallback"
+                }
+            }
+        }
+
+        if (mediaItems.isEmpty()) {
+            log.warn { "countNewFilesByPath: all_queries_returned_0_for_path='$relativePath'" }
+            return 0
+        }
 
         return runBlocking {
             var count = 0
@@ -263,6 +297,10 @@ class ScanLocalFoldersUseCase(
                 }
                 if (!exists) count++
             }
+            log.info {
+                "countNewFilesByPath: path='$relativePath', " +
+                        "mediaItems=${mediaItems.size}, new=$count"
+            }
             count
         }
     }
@@ -270,6 +308,7 @@ class ScanLocalFoldersUseCase(
     /**
      * Scans media files in a folder by its relative path.
      * Returns only files not yet synced.
+     * Falls back to BUCKET_DISPLAY_NAME if RELATIVE_PATH query returns 0.
      */
     fun scanByRelativePath(relativePath: String, syncedFileDao: SyncedFileDao): List<LocalMediaItem> {
         val allItems = mutableListOf<LocalMediaItem>()
@@ -286,6 +325,30 @@ class ScanLocalFoldersUseCase(
             relativePath = relativePath,
             destination = allItems,
         )
+
+        // Fallback to BUCKET_DISPLAY_NAME when RELATIVE_PATH query returns 0
+        if (allItems.isEmpty()) {
+            val folderName = relativePath.trimEnd('/').split('/').lastOrNull()
+            if (folderName != null) {
+                log.warn {
+                    "scanByRelativePath: RELATIVE_PATH returned 0 " +
+                            "for path='$relativePath', " +
+                            "falling back to BUCKET_DISPLAY_NAME='$folderName'"
+                }
+                queryMediaByDisplayName(
+                    uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection = IMAGES_PROJECTION,
+                    displayName = folderName,
+                    destination = allItems,
+                )
+                queryMediaByDisplayName(
+                    uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    projection = VIDEO_PROJECTION,
+                    displayName = folderName,
+                    destination = allItems,
+                )
+            }
+        }
 
         return runBlocking {
             allItems.filter { item ->
@@ -324,6 +387,7 @@ class ScanLocalFoldersUseCase(
             selectionArgs = arrayOf("%${relativePath}%")
         }
 
+        val before = destination.size
         contentResolver.query(
             uri,
             projection,
@@ -392,6 +456,98 @@ class ScanLocalFoldersUseCase(
                     )
                 )
             }
+        }
+        log.info {
+            "queryMediaByPath: uri=$uri, " +
+                    "selection=$selection, " +
+                    "args=${selectionArgs.contentToString()}, " +
+                    "returned=${destination.size - before}"
+        }
+    }
+
+    /**
+     * Queries media files by BUCKET_DISPLAY_NAME (fallback for countNewFilesByPath).
+     * Used when RELATIVE_PATH-based query returns 0 results.
+     */
+    private fun queryMediaByDisplayName(
+        uri: Uri,
+        projection: Array<String>,
+        displayName: String,
+        destination: MutableList<LocalMediaItem>,
+    ) {
+        val before = destination.size
+        contentResolver.query(
+            uri,
+            projection,
+            "${MediaStore.Images.Media.BUCKET_DISPLAY_NAME} = ?",
+            arrayOf(displayName),
+            null,
+        )?.use { cursor ->
+            val idIdx = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+            val dataIdx = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+            val dateIdx = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_MODIFIED)
+            val sizeIdx = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
+            val mimeIdx = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.MIME_TYPE)
+            val bucketIdx = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_ID)
+            val nameIdx = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+            val isApi29Plus = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+            val relativePathIdx = if (isApi29Plus) {
+                cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
+            } else {
+                -1
+            }
+
+            while (cursor.moveToNext()) {
+                val filePath: String
+                if (dataIdx >= 0) {
+                    val data = cursor.getString(dataIdx)
+                    if (data != null) {
+                        filePath = data
+                    } else if (relativePathIdx >= 0) {
+                        val relPath = cursor.getString(relativePathIdx)
+                        val dispName = cursor.getString(nameIdx)
+                        filePath = if (relPath != null && dispName != null) {
+                            "$relPath/$dispName"
+                        } else {
+                            log.warn { "queryMediaByDisplayName: skipped — RELATIVE_PATH or DISPLAY_NAME is null" }
+                            continue
+                        }
+                    } else {
+                        log.warn { "queryMediaByDisplayName: skipped — DATA is null and no RELATIVE_PATH" }
+                        continue
+                    }
+                } else if (relativePathIdx >= 0) {
+                    val relPath = cursor.getString(relativePathIdx)
+                    val dispName = cursor.getString(nameIdx)
+                    filePath = if (relPath != null && dispName != null) {
+                        "$relPath/$dispName"
+                    } else {
+                        log.warn { "queryMediaByDisplayName: skipped — RELATIVE_PATH or DISPLAY_NAME is null (no DATA)" }
+                        continue
+                    }
+                } else {
+                    log.warn { "queryMediaByDisplayName: skipped — no DATA and no RELATIVE_PATH" }
+                    continue
+                }
+
+                destination.add(
+                    LocalMediaItem(
+                        mediaStoreId = cursor.getLong(idIdx),
+                        filePath = filePath,
+                        dateModified = cursor.getLong(dateIdx),
+                        sizeBytes = cursor.getLong(sizeIdx),
+                        mimeType = cursor.getString(mimeIdx) ?: "image/*",
+                        bucketId = cursor.getString(bucketIdx) ?: "",
+                        displayName = cursor.getString(nameIdx) ?: "unknown",
+                        contentUri = "${uri}/${cursor.getLong(idIdx)}",
+                    )
+                )
+            }
+        }
+        log.info {
+            "queryMediaByDisplayName: uri=$uri, " +
+                    "displayName=$displayName, " +
+                    "returned=${destination.size - before}"
         }
     }
 }
