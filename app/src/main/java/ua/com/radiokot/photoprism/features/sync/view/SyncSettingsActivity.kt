@@ -390,7 +390,17 @@ class SyncSettingsActivity : BaseActivity() {
         } else {
             val latest = history.first()
             val status = viewModel.formatHistoryStatus(latest.status)
-            binding.tvHistorySummary.text = "$status ${latest.startedAt} — ${latest.syncedCount}/${latest.totalFiles}"
+            val folderInfo = if (latest.folderName != null) {
+                "${latest.folderName} "
+            } else {
+                ""
+            }
+            val syncInfo = if (latest.totalFiles == 0) {
+                getString(R.string.sync_history_no_new_files)
+            } else {
+                "${latest.syncedCount}/${latest.totalFiles}"
+            }
+            binding.tvHistorySummary.text = "$status $folderInfo$syncInfo"
         }
     }
 

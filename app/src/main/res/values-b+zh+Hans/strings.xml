@@ -353,6 +353,7 @@
     <string name="sync_permission_denied">需要存储权限才能扫描照片进行同步</string>
     <string name="sync_notification_cancel">取消</string>
     <string name="sync_notification_pause">暂停</string>
+    <string name="sync_notification_resume">继续同步</string>
     <string name="sync_paused_title">同步已暂停</string>
     <string name="sync_stop">暂停同步</string>
     <string name="sync_interval_title">自动同步间隔</string>
@@ -367,6 +368,9 @@
     <string name="sync_history_item_format">已同步 %1$d/%2$d</string>
     <string name="sync_history_item_failed">（%1$d 失败）</string>
     <string name="sync_history_load_failed">加载历史记录失败</string>
+    <string name="sync_history_no_new_files">无新文件</string>
+    <string name="sync_history_item_folder_format">%1$s - %2$d/%3$d</string>
+    
     <string name="sync_metered_warning_title">非 Wi-Fi 网络</string>
     <string name="sync_metered_warning_message">您当前使用的是移动数据或计次网络，同步可能消耗较多流量。确定继续吗？</string>
     <string name="sync_metered_warning_continue">继续同步</string>

@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -19,6 +20,25 @@ class SyncNotificationsManager(
 ) {
     private val notificationsManager: NotificationManagerCompat by lazy {
         NotificationManagerCompat.from(context)
+    }
+
+    private val prefs: SharedPreferences by lazy {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    /**
+     * Saves the current sync progress so that [SyncPauseReceiver]
+     * can display the real synced count in the paused notification.
+     */
+    fun saveSyncProgress(synced: Int) {
+        prefs.edit().putInt(KEY_SYNCED_COUNT, synced).apply()
+    }
+
+    /**
+     * Retrieves the last saved sync progress.
+     */
+    fun getSyncProgress(): Int {
+        return prefs.getInt(KEY_SYNCED_COUNT, 0)
     }
 
     private fun ensureChannel() {
@@ -63,6 +83,18 @@ class SyncNotificationsManager(
         return PendingIntent.getBroadcast(
             context,
             PAUSE_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun createResumePendingIntent(): PendingIntent {
+        val intent = Intent(context, SyncPauseReceiver::class.java).apply {
+            action = ACTION_RESUME_SYNC
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            RESUME_REQUEST_CODE,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -127,6 +159,11 @@ class SyncNotificationsManager(
             .setColor(ContextCompat.getColor(context, R.color.md_theme_light_primary))
             .setSmallIcon(R.drawable.ic_upload_white)
             .setAutoCancel(true)
+            .addAction(
+                0,
+                context.getString(R.string.sync_notification_resume),
+                createResumePendingIntent(),
+            )
             .build()
 
         notificationsManager.notify(uploadToken.hashCode(), notification)
@@ -197,21 +234,43 @@ class SyncNotificationsManager(
     companion object {
         const val SYNC_PROGRESS_NOTIFICATION_ID = 2001
         const val ACTION_PAUSE_SYNC = "ua.com.radiokot.photoprism.action.PAUSE_SYNC"
+        const val ACTION_RESUME_SYNC = "ua.com.radiokot.photoprism.action.RESUME_SYNC"
         private const val PAUSE_REQUEST_CODE = 9002
+        private const val RESUME_REQUEST_CODE = 9003
         private const val CHANNEL_ID = "sync"
+        private const val PREFS_NAME = "sync_notifications"
+        private const val KEY_SYNCED_COUNT = "synced_count"
     }
 }
 
-/** BroadcastReceiver that pauses the ongoing sync from a notification action. */
+/** BroadcastReceiver that handles pause and resume actions from sync notifications. */
 class SyncPauseReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == SyncNotificationsManager.ACTION_PAUSE_SYNC) {
-            WorkManager.getInstance(context).cancelUniqueWork(SyncWorker.TAG)
-            // Show "paused" notification so user knows sync was paused
-            SyncNotificationsManager(context).notifySyncPaused(
-                uploadToken = "paused_${System.currentTimeMillis()}",
-                syncedCount = 0,
-            )
+        when (intent.action) {
+            SyncNotificationsManager.ACTION_PAUSE_SYNC -> {
+                WorkManager.getInstance(context).cancelUniqueWork(SyncWorker.TAG)
+                // Show "paused" notification with the real synced count.
+                val manager = SyncNotificationsManager(context)
+                manager.notifySyncPaused(
+                    uploadToken = "paused_${System.currentTimeMillis()}",
+                    syncedCount = manager.getSyncProgress(),
+                )
+            }
+            SyncNotificationsManager.ACTION_RESUME_SYNC -> {
+                // Re-enqueue the sync worker (same pattern as SyncSettingsViewModel).
+                val constraints = androidx.work.Constraints.Builder()
+                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                    .build()
+                val request = androidx.work.OneTimeWorkRequestBuilder<SyncWorker>()
+                    .setConstraints(constraints)
+                    .addTag(SyncWorker.TAG)
+                    .build()
+                WorkManager.getInstance(context).enqueueUniqueWork(
+                    SyncWorker.TAG,
+                    androidx.work.ExistingWorkPolicy.REPLACE,
+                    request,
+                )
+            }
         }
     }
 }

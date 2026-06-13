@@ -38,7 +38,7 @@ class GalleryNavigationView(
 
     /** 底部导航项 → 点击行为 映射表 */
     private val bottomNavActions: Map<Int, (GalleryViewModel) -> Unit> = mapOf(
-        R.id.bottom_photos to {},
+        R.id.bottom_photos to { vm -> vm.onPhotosClicked() },
         R.id.bottom_search to { vm -> vm.searchViewModel.onSearchSummaryClicked() },
         R.id.bottom_albums to { vm -> vm.onAlbumsClicked() },
         R.id.favorites to { vm -> vm.onFavoritesClicked() },

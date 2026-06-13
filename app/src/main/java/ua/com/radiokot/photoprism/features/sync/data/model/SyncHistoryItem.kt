@@ -18,6 +18,7 @@ data class SyncHistoryItem(
     val failedCount: Int,
     val totalFiles: Int,
     val folderCount: Int,
+    val folderName: String? = null, // Comma-separated folder names
     val status: String,  // "completed", "partial", "failed"
 ) {
     companion object {

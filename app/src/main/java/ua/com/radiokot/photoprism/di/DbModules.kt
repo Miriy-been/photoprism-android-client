@@ -56,6 +56,9 @@ val appDbModule = module {
                     execSQL("ALTER TABLE `synced_files` ADD COLUMN `photoPrismHash` TEXT")
                     execSQL("CREATE INDEX IF NOT EXISTS `index_synced_files_photoPrismHash` ON `synced_files` (`photoPrismHash`)")
                 },
+                roomMigration(from = 14, to = 15) {
+                    execSQL("ALTER TABLE `sync_history` ADD COLUMN `folderName` TEXT")
+                },
                 roomMigration(from = 9, to = 10) {
                     execSQL("CREATE TABLE IF NOT EXISTS `cached_media` (" +
                             "`uid` TEXT NOT NULL PRIMARY KEY, " +

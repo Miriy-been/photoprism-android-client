@@ -51,6 +51,8 @@ constructor(
         val photoUid: String,
         @JsonProperty("Name")
         val name: String,
+        @JsonProperty("OriginalName")
+        val originalName: String?,
         @JsonProperty("Mime")
         val mime: String?,
         @JsonProperty("FileType")

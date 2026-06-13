@@ -33,6 +33,9 @@ interface SyncedFileDao {
     @Query("DELETE FROM synced_files WHERE status = 'pending' AND syncedAt < :threshold")
     suspend fun cleanupPending(threshold: Long)
 
+    @Query("DELETE FROM synced_files WHERE filePath IN (:filePaths)")
+    suspend fun deleteByFilePaths(filePaths: List<String>)
+
     /**
      * Returns completed [SyncedFile]s whose [SyncedFile.photoPrismHash] is null,
      * meaning they have been uploaded but not yet matched to a PhotoPrism hash.

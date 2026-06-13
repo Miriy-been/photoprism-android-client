@@ -44,6 +44,7 @@ data class SyncHistoryDisplay(
     val failedCount: Int,
     val totalFiles: Int,
     val status: String,
+    val folderName: String? = null,
 )
 
 class SyncSettingsViewModel(
@@ -335,6 +336,7 @@ class SyncSettingsViewModel(
                         failedCount = item.failedCount,
                         totalFiles = item.totalFiles,
                         status = item.status,
+                        folderName = item.folderName,
                     )
                 })
             }, { error ->

@@ -66,6 +66,8 @@ class SyncWorker(
         val uploadToken = UUID.randomUUID().toString()
         var startedAt = System.currentTimeMillis()
         var enabledFolderCount = 0
+        var folderNames = ""
+        val accumulatedProgress = notificationsManager.getSyncProgress()
 
         return Single.fromCallable {
             runBlocking { syncFolderDao.getEnabledFolders() }
@@ -73,6 +75,7 @@ class SyncWorker(
             .subscribeOn(Schedulers.io())
             .flatMap { enabledFolders ->
                 enabledFolderCount = enabledFolders.size
+                folderNames = enabledFolders.joinToString(", ") { it.displayName }
                 if (enabledFolders.isEmpty()) {
                     log.info { "createWork(): no_enabled_folders" }
                     return@flatMap Single.just(SyncResult(0, 0))
@@ -94,6 +97,12 @@ class SyncWorker(
                 // so we need to visit each folder even when there are 0 pending files.
 
                 var chained = Single.just(SyncResult(0, 0))
+                if (accumulatedProgress > 0) {
+                    log.info {
+                        "createWork(): accumulated_progress=$accumulatedProgress" +
+                                " (resuming after pause)"
+                    }
+                }
 
                 for (folder in enabledFolders) {
                     val innerFolder = folder
@@ -104,11 +113,12 @@ class SyncWorker(
                                     "\nbucketId=${innerFolder.bucketId}"
                         }
 
+                        notificationsManager.saveSyncProgress(accumulatedProgress + current.synced)
                         notificationsManager.notifySyncProgress(
                             uploadToken = uploadToken,
                             folderName = innerFolder.displayName,
-                            syncedCount = current.synced,
-                            totalFiles = totalPending,
+                            syncedCount = accumulatedProgress + current.synced,
+                            totalFiles = accumulatedProgress + totalPending,
                         )
 
                         processFolder(
@@ -119,8 +129,9 @@ class SyncWorker(
                             syncFolderDao = syncFolderDao,
                             notificationsManager = notificationsManager,
                             uploadToken = uploadToken,
-                            totalFiles = totalPending,
+                            totalFiles = accumulatedProgress + totalPending,
                             alreadySynced = current.synced,
+                            accumulatedProgress = accumulatedProgress,
                         )
                             .map { folderResult ->
                                 SyncResult(
@@ -149,6 +160,7 @@ class SyncWorker(
                     else -> SyncHistoryItem.STATUS_COMPLETED
                 }
                 val totalFiles = result.synced + result.failed
+                val displayFileCount = accumulatedProgress + result.synced
                 // Always record history, even for 0-file syncs (album re-creation).
                 runBlocking {
                     syncHistoryDao.insert(
@@ -159,9 +171,12 @@ class SyncWorker(
                             failedCount = result.failed,
                             totalFiles = totalFiles,
                             folderCount = enabledFolderCount,
+                            folderName = folderNames.ifEmpty { null },
                             status = historyStatus,
                         )
                     )
+                    // Clean up history older than 30 days
+                    syncHistoryDao.deleteOlderThan(now - 30L * 24 * 60 * 60 * 1000)
                 }
 
                 if (!isStopped) {
@@ -169,7 +184,7 @@ class SyncWorker(
                         result.failed > 0 && result.synced > 0 -> {
                             notificationsManager.notifySyncFailed(
                                 uploadToken = uploadToken,
-                                syncedCount = result.synced,
+                                syncedCount = displayFileCount,
                                 failedCount = result.failed,
                             )
                         }
@@ -183,8 +198,11 @@ class SyncWorker(
                         else -> {
                             notificationsManager.notifySyncComplete(
                                 uploadToken = uploadToken,
-                                fileCount = result.synced,
+                                fileCount = displayFileCount,
                             )
+                            // Clear accumulated progress on successful completion
+                            // so the next sync starts fresh.
+                            notificationsManager.saveSyncProgress(0)
                         }
                     }
                 }
@@ -235,6 +253,7 @@ class SyncWorker(
         uploadToken: String,
         totalFiles: Int,
         alreadySynced: Int,
+        accumulatedProgress: Int = 0,
     ): Single<FolderResult> {
         return Single.fromCallable {
             // Bug 1 fix: Ensure album exists on the server BEFORE checking for new files.
@@ -282,7 +301,82 @@ class SyncWorker(
                 return@fromCallable FolderResult(0, 0)
             }
 
-            val importableFiles = newFiles.map { item ->
+            // Feature: Server-side deduplication for reinstall scenarios.
+            // If the local DB has been wiped (app reinstall), MediaStore files
+            // will show as "new" even if they were already synced before.
+            //
+            // Three-stage dedup strategy:
+            //   1. Search by original filename (original:"xxx") — fast, matches most files
+            //   2. Compute SHA1 locally + search by hash (hash:xxx) — reliable but slower
+            //   3. Fallback: upload and let the server detect duplicates by SHA1
+            val serverDeduplicatedFiles = mutableListOf<LocalMediaItem>()
+            var skippedByServer = 0
+
+            val matchUseCase = sessionScope?.get<MatchSyncedFilesUseCase>()
+            if (matchUseCase != null) {
+                for (item in newFiles) {
+                    val filename = matchUseCase.extractFilename(item.filePath)
+
+                    // Stage 1: Search by original filename (fast)
+                    var serverHash = matchUseCase.searchByFilenameForDeduplication(filename)
+
+                    // Stage 2: If filename search failed, try SHA1 hash (reliable)
+                    if (serverHash == null) {
+                        val sha1 = matchUseCase.computeSha1(item.filePath)
+                        if (sha1 != null) {
+                            serverHash = matchUseCase.searchBySha1(sha1)
+                        }
+                    }
+
+                    if (serverHash != null) {
+                        // Server already has this file — mark as completed locally
+                        // so we don't re-upload it.
+                        runBlocking {
+                            syncedFileDao.insertAll(
+                                listOf(
+                                    SyncedFile(
+                                        mediaStoreId = item.mediaStoreId,
+                                        filePath = item.filePath,
+                                        dateModified = item.dateModified,
+                                        sizeBytes = item.sizeBytes,
+                                        mimeType = item.mimeType,
+                                        bucketId = folder.bucketId,
+                                        syncedAt = System.currentTimeMillis(),
+                                        status = SyncedFile.STATUS_COMPLETED,
+                                        photoPrismHash = serverHash,
+                                    )
+                                )
+                            )
+                        }
+                        skippedByServer++
+                        log.info {
+                            "processFolder(): server_dedup_skipped:" +
+                                    "filePath=${item.filePath}," +
+                                    "hash=$serverHash"
+                        }
+                    } else {
+                        serverDeduplicatedFiles.add(item)
+                    }
+                }
+                log.info {
+                    "processFolder(): server_dedup_result:" +
+                            "total=${newFiles.size}," +
+                            "skipped=$skippedByServer," +
+                            "toUpload=${serverDeduplicatedFiles.size}"
+                }
+            } else {
+                serverDeduplicatedFiles.addAll(newFiles)
+            }
+
+            if (serverDeduplicatedFiles.isEmpty()) {
+                log.info {
+                    "processFolder(): all_files_skipped_by_server_dedup:" +
+                            "skipped=$skippedByServer"
+                }
+                return@fromCallable FolderResult(0, 0)
+            }
+
+            val importableFiles = serverDeduplicatedFiles.map { item ->
                 ImportableFile(
                     contentUri = item.contentUri,
                     displayName = item.displayName,
@@ -361,10 +455,14 @@ class SyncWorker(
                     syncedInFolder += batch.size
 
                     // Feature 1: Update progress notification with determinate progress
+                    // accumulatedProgress carries over counts from previous runs (pause/resume),
+                    // so the notification shows the real total across all runs.
+                    val displaySynced = accumulatedProgress + alreadySynced + syncedInFolder
+                    notificationsManager.saveSyncProgress(displaySynced)
                     notificationsManager.notifySyncProgress(
                         uploadToken = uploadToken,
                         folderName = folder.displayName,
-                        syncedCount = alreadySynced + syncedInFolder,
+                        syncedCount = displaySynced,
                         totalFiles = totalFiles,
                     )
 
@@ -379,8 +477,15 @@ class SyncWorker(
                     // Doing so would prevent re-upload attempts and can create
                     // duplicate server entries if the upload actually succeeded
                     // but the response timed out (ImportFilesUseCase retries
-                    // internally up to 6 times). The pending records will be
-                    // cleaned up by the periodic cleanup task.
+                    // internally up to 6 times).
+
+                    // Clean up pending records for the failed batch so these
+                    // files are properly treated as "new" on the next sync run,
+                    // preventing the same file from being double-counted
+                    // (once as "failed", once as "synced" on retry).
+                    runBlocking {
+                        syncedFileDao.deleteByFilePaths(batchNewFiles.map { it.filePath })
+                    }
 
                     failedInFolder += batch.size
 
@@ -400,6 +505,13 @@ class SyncWorker(
                 )
             }
 
+            log.info {
+                "processFolder(): folder_result:" +
+                        "folder=${folder.displayName}," +
+                        "syncedInFolder=$syncedInFolder," +
+                        "skippedByServer=$skippedByServer," +
+                        "failedInFolder=$failedInFolder"
+            }
             FolderResult(syncedInFolder, failedInFolder)
         }.subscribeOn(Schedulers.io())
     }

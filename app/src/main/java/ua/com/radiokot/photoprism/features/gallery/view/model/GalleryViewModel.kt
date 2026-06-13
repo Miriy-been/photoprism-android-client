@@ -547,6 +547,15 @@ class GalleryViewModel(
         )
     }
 
+    fun onPhotosClicked() {
+        eventsSubject.onNext(
+            Event.SwitchToTab(
+                tabId = BottomNavItemId.PHOTOS,
+                defaultSearchConfig = getStateDefaultSearchConfig(),
+            )
+        )
+    }
+
     fun onAlbumsClicked() {
         eventsSubject.onNext(
             Event.SwitchToTab(

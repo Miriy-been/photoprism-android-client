@@ -284,6 +284,7 @@
     </plurals>
     <string name="sync_notification_cancel">Cancel</string>
     <string name="sync_notification_pause">Pause</string>
+    <string name="sync_notification_resume">Resume</string>
     <string name="sync_paused_title">Sync paused</string>
     <string name="sync_stop">Pause sync</string>
     <string name="sync_interval_title">Auto-sync interval</string>
@@ -298,6 +299,9 @@
     <string name="sync_history_item_format">%1$d/%2$d synced</string>
     <string name="sync_history_item_failed">(%1$d failed)</string>
     <string name="sync_history_load_failed">Failed to load history</string>
+    <string name="sync_history_no_new_files">No new files</string>
+    <string name="sync_history_item_folder_format">%1$s - %2$d/%3$d</string>
+
     <string name="sync_metered_warning_title">Metered network</string>
     <string name="sync_metered_warning_message">You\'re on mobile data or a metered Wi-Fi network. Syncing may use significant data. Continue?</string>
     <string name="sync_metered_warning_continue">Continue</string>

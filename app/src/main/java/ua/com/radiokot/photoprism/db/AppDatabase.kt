@@ -16,7 +16,7 @@ import ua.com.radiokot.photoprism.features.sync.data.storage.SyncedFileDao
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
 
 @Database(
-    version = 14,
+    version = 15,
     entities = [
         SearchBookmarksDbEntity::class,
         MemoryDbEntity::class,

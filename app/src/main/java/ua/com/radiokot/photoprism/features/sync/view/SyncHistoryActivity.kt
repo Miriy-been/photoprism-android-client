@@ -113,12 +113,17 @@ class SyncHistoryActivity : BaseActivity() {
 
             checkBox.visibility = android.view.View.GONE
 
-            nameTv.text = item.startedAt
-            pathTv.text = getString(
-                ua.com.radiokot.photoprism.R.string.sync_history_item_format,
-                item.syncedCount,
-                item.totalFiles,
-            ) + if (item.failedCount > 0) {
+            nameTv.text = item.folderName ?: item.startedAt
+            val syncText = if (item.totalFiles == 0) {
+                getString(ua.com.radiokot.photoprism.R.string.sync_history_no_new_files)
+            } else {
+                getString(
+                    ua.com.radiokot.photoprism.R.string.sync_history_item_format,
+                    item.syncedCount,
+                    item.totalFiles,
+                )
+            }
+            pathTv.text = syncText + if (item.failedCount > 0) {
                 " " + getString(ua.com.radiokot.photoprism.R.string.sync_history_item_failed, item.failedCount)
             } else {
                 ""
