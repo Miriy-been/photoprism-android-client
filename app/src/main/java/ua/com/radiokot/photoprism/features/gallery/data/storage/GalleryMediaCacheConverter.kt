@@ -13,7 +13,7 @@ import java.util.Date
 /**
  * Converts [GalleryMedia] to [CachedMediaEntity] for Room persistence.
  */
-internal fun GalleryMedia.toCachedEntity(): CachedMediaEntity {
+internal fun GalleryMedia.toCachedEntity(albumUid: String? = null): CachedMediaEntity {
     return CachedMediaEntity(
         uid = uid,
         title = title,
@@ -35,6 +35,7 @@ internal fun GalleryMedia.toCachedEntity(): CachedMediaEntity {
         fileHash = hash,
         cachedAt = System.currentTimeMillis(),
         isReadOnly = false,
+        albumUid = albumUid,
     )
 }
 

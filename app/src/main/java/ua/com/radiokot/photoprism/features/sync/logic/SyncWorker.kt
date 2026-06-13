@@ -113,14 +113,6 @@ class SyncWorker(
                                     "\nbucketId=${innerFolder.bucketId}"
                         }
 
-                        notificationsManager.saveSyncProgress(accumulatedProgress + current.synced)
-                        notificationsManager.notifySyncProgress(
-                            uploadToken = uploadToken,
-                            folderName = innerFolder.displayName,
-                            syncedCount = accumulatedProgress + current.synced,
-                            totalFiles = accumulatedProgress + totalPending,
-                        )
-
                         processFolder(
                             folder = innerFolder,
                             importFilesUseCase = importFilesUseCase,
@@ -150,6 +142,19 @@ class SyncWorker(
                     syncedFileDao.cleanupPending(
                         System.currentTimeMillis() - 60 * 60 * 1000
                     )
+                }
+
+                // When nothing was actually synced or failed (e.g. all files already
+                // on server, or folder is empty), silently exit without notification
+                // and without recording history, similar to Google Photos behavior.
+                if (result.synced == 0 && result.failed == 0) {
+                    notificationsManager.cancelSyncNotification()
+                    notificationsManager.saveSyncProgress(0)
+                    log.info {
+                        "createWork(): completed_silently:" +
+                                "\nnothing_to_sync"
+                    }
+                    return@map Result.success()
                 }
 
                 // Feature 3: Write sync history record
@@ -221,14 +226,9 @@ class SyncWorker(
             }
             .doOnSubscribe {
                 log.info { "createWork(): starting" }
-                // Use indeterminate progress initially (totalFiles=0)
-                // since totalPending isn't computed yet.
-                notificationsManager.notifySyncProgress(
-                    uploadToken = uploadToken,
-                    folderName = null,
-                    syncedCount = 0,
-                    totalFiles = 0,
-                )
+                // Show "Preparing…" initially so the user doesn't
+                // see "0 photos synced" during scan/dedup phase.
+                notificationsManager.notifyPreparing()
             }
             .onErrorReturn { error ->
                 log.error(error) { "createWork(): error_occurred" }
@@ -317,16 +317,10 @@ class SyncWorker(
                 for (item in newFiles) {
                     val filename = matchUseCase.extractFilename(item.filePath)
 
-                    // Stage 1: Search by original filename (fast)
-                    var serverHash = matchUseCase.searchByFilenameForDeduplication(filename)
-
-                    // Stage 2: If filename search failed, try SHA1 hash (reliable)
-                    if (serverHash == null) {
-                        val sha1 = matchUseCase.computeSha1(item.filePath)
-                        if (sha1 != null) {
-                            serverHash = matchUseCase.searchBySha1(sha1)
-                        }
-                    }
+                    // Search by original filename — fast, matches most camera files.
+                    // If filename search fails, let the server detect duplicates
+                    // via SHA1 during import, avoiding expensive local file reads.
+                    val serverHash = matchUseCase.searchByFilenameForDeduplication(filename)
 
                     if (serverHash != null) {
                         // Server already has this file — mark as completed locally
@@ -376,6 +370,26 @@ class SyncWorker(
                 return@fromCallable FolderResult(0, 0)
             }
 
+            // Pre-write pending records for all files that passed dedup.
+            // This ensures pause/resume doesn't re-dedup them — on resume,
+            // these files are already in syncedFileDao and won't be scanned.
+            runBlocking {
+                syncedFileDao.insertAll(
+                    serverDeduplicatedFiles.map { item ->
+                        SyncedFile(
+                            mediaStoreId = item.mediaStoreId,
+                            filePath = item.filePath,
+                            dateModified = item.dateModified,
+                            sizeBytes = item.sizeBytes,
+                            mimeType = item.mimeType,
+                            bucketId = folder.bucketId,
+                            syncedAt = System.currentTimeMillis(),
+                            status = SyncedFile.STATUS_PENDING,
+                        )
+                    }
+                )
+            }
+
             val importableFiles = serverDeduplicatedFiles.map { item ->
                 ImportableFile(
                     contentUri = item.contentUri,
@@ -398,24 +412,14 @@ class SyncWorker(
                 }
 
                 val batch = batches[batchIndex]
-                val batchNewFiles = newFiles.drop(batchIndex * BATCH_SIZE).take(batch.size)
+                // Index into serverDeduplicatedFiles (not newFiles) so
+                // batch indexing correctly aligns with importableFiles.
+                val batchFiles = serverDeduplicatedFiles
+                    .drop(batchIndex * BATCH_SIZE)
+                    .take(batch.size)
 
-                // Feature 4: Per-file pending records before upload
-                val pendingEntries = batchNewFiles.map { item ->
-                    SyncedFile(
-                        mediaStoreId = item.mediaStoreId,
-                        filePath = item.filePath,
-                        dateModified = item.dateModified,
-                        sizeBytes = item.sizeBytes,
-                        mimeType = item.mimeType,
-                        bucketId = folder.bucketId,
-                        syncedAt = System.currentTimeMillis(),
-                        status = SyncedFile.STATUS_PENDING,
-                    )
-                }
-                runBlocking {
-                    syncedFileDao.insertAll(pendingEntries)
-                }
+                // Pending records are pre-written above for all dedup-passed files,
+                // so we only update status here.
 
                 try {
                     importFilesUseCase(
@@ -425,7 +429,7 @@ class SyncWorker(
                     ).ignoreElements().blockingAwait(30, TimeUnit.MINUTES)
 
                     runBlocking {
-                        syncedFileDao.markCompleted(batchNewFiles.map { it.filePath })
+                        syncedFileDao.markCompleted(batchFiles.map { it.filePath })
                     }
 
                     // Match PhotoPrism hashes for this batch in the background.
@@ -433,7 +437,7 @@ class SyncWorker(
                         val matchUseCase = sessionScope?.get<MatchSyncedFilesUseCase>()
                         if (matchUseCase != null) {
                             matchUseCase.match(
-                                filePaths = batchNewFiles.map { it.filePath }
+                                filePaths = batchFiles.map { it.filePath }
                             ).subscribe(
                                 { result ->
                                     log.debug {
@@ -484,7 +488,7 @@ class SyncWorker(
                     // preventing the same file from being double-counted
                     // (once as "failed", once as "synced" on retry).
                     runBlocking {
-                        syncedFileDao.deleteByFilePaths(batchNewFiles.map { it.filePath })
+                        syncedFileDao.deleteByFilePaths(batchFiles.map { it.filePath })
                     }
 
                     failedInFolder += batch.size
@@ -536,7 +540,7 @@ class SyncWorker(
     companion object {
         const val TAG = "Sync"
         const val PERIODIC_TAG = "SyncPeriodic"
-        private const val BATCH_SIZE = 1
+        private const val BATCH_SIZE = 3
 
         private fun String.toBase64(): String =
             android.util.Base64.encodeToString(

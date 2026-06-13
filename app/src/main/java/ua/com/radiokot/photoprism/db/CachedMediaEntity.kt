@@ -39,4 +39,9 @@ data class CachedMediaEntity(
      * or null if the thumbnail hasn't been downloaded yet.
      */
     val localThumbnailPath: String? = null,
+    /**
+     * UID of the album this media belongs to,
+     * or null if not associated with any specific album.
+     */
+    val albumUid: String? = null,
 )

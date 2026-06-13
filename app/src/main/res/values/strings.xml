@@ -270,10 +270,11 @@
     <string name="sync_remove_folder">Remove</string>
     <string name="sync_wifi_only">Wi-Fi only</string>
     <string name="sync_notification_channel">Photo sync</string>
+    <string name="sync_notification_preparing">Preparing…</string>
     <string name="sync_notification_progress_title">Syncing photos…</string>
     <string name="sync_notification_progress_folder">Syncing %s…</string>
     <string name="sync_complete_title">Sync complete</string>
-    <string name="sync_complete_text">%d new photos uploaded</string>
+    <string name="sync_complete_text">%d photos synced</string>
     <string name="sync_failed_title">Sync failed</string>
     <string name="sync_failed_text">%d photos failed to upload</string>
     <string name="sync_failed_partial_text">%1$d uploaded, %2$d failed</string>

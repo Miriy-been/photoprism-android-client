@@ -5,9 +5,12 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Room
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import ua.com.radiokot.photoprism.db.AlbumCacheDao
 import ua.com.radiokot.photoprism.db.AppDatabase
 import ua.com.radiokot.photoprism.db.CachedMediaDao
 import ua.com.radiokot.photoprism.db.roomMigration
+import ua.com.radiokot.photoprism.features.labels.data.storage.LabelCacheDao
+import ua.com.radiokot.photoprism.features.people.data.storage.PeopleCacheDao
 
 val appDbModule = module {
     single {
@@ -59,6 +62,44 @@ val appDbModule = module {
                 roomMigration(from = 14, to = 15) {
                     execSQL("ALTER TABLE `sync_history` ADD COLUMN `folderName` TEXT")
                 },
+                roomMigration(from = 15, to = 16) {
+                    execSQL("CREATE TABLE IF NOT EXISTS `albums_cache` (" +
+                            "`uid` TEXT NOT NULL PRIMARY KEY, " +
+                            "`type` TEXT NOT NULL, " +
+                            "`title` TEXT NOT NULL, " +
+                            "`thumbnailHash` TEXT, " +
+                            "`photoCount` INTEGER NOT NULL DEFAULT 0, " +
+                            "`path` TEXT, " +
+                            "`ymd` TEXT, " +
+                            "`cachedAt` INTEGER NOT NULL" +
+                            ")")
+                    execSQL("CREATE INDEX IF NOT EXISTS `index_albums_cache_type` ON `albums_cache` (`type`)")
+                    execSQL("CREATE INDEX IF NOT EXISTS `index_albums_cache_cachedAt` ON `albums_cache` (`cachedAt`)")
+                },
+                roomMigration(from = 16, to = 17) {
+                    execSQL("CREATE TABLE IF NOT EXISTS `people_cache` (" +
+                            "`id` TEXT NOT NULL PRIMARY KEY, " +
+                            "`name` TEXT, " +
+                            "`isFavorite` INTEGER NOT NULL DEFAULT 0, " +
+                            "`photoCount` INTEGER NOT NULL DEFAULT 0, " +
+                            "`thumbnailHash` TEXT, " +
+                            "`cachedAt` INTEGER NOT NULL" +
+                            ")")
+                    execSQL("CREATE INDEX IF NOT EXISTS `index_people_cache_cachedAt` ON `people_cache` (`cachedAt`)")
+                    execSQL("CREATE TABLE IF NOT EXISTS `labels_cache` (" +
+                            "`uid` TEXT NOT NULL PRIMARY KEY, " +
+                            "`name` TEXT NOT NULL, " +
+                            "`slug` TEXT NOT NULL, " +
+                            "`isFavorite` INTEGER NOT NULL DEFAULT 0, " +
+                            "`itemCount` INTEGER NOT NULL DEFAULT 0, " +
+                            "`thumbnailHash` TEXT, " +
+                            "`cachedAt` INTEGER NOT NULL" +
+                            ")")
+                    execSQL("CREATE INDEX IF NOT EXISTS `index_labels_cache_cachedAt` ON `labels_cache` (`cachedAt`)")
+                },
+                roomMigration(from = 17, to = 18) {
+                    execSQL("ALTER TABLE `cached_media` ADD COLUMN `albumUid` TEXT")
+                },
                 roomMigration(from = 9, to = 10) {
                     execSQL("CREATE TABLE IF NOT EXISTS `cached_media` (" +
                             "`uid` TEXT NOT NULL PRIMARY KEY, " +
@@ -80,7 +121,9 @@ val appDbModule = module {
                             "`height` INTEGER, " +
                             "`fileHash` TEXT, " +
                             "`cachedAt` INTEGER NOT NULL, " +
-                            "`isReadOnly` INTEGER NOT NULL DEFAULT 0" +
+                            "`isReadOnly` INTEGER NOT NULL DEFAULT 0, " +
+                            "`localThumbnailPath` TEXT, " +
+                            "`albumUid` TEXT" +
                             ")")
                     execSQL("CREATE INDEX IF NOT EXISTS `index_cached_media_takenAtLocal` ON `cached_media` (`takenAtLocal`)")
                     execSQL("CREATE INDEX IF NOT EXISTS `index_cached_media_favorite` ON `cached_media` (`favorite`)")
@@ -94,4 +137,16 @@ val appDbModule = module {
     single {
         get<AppDatabase>().cachedMedia()
     } bind CachedMediaDao::class
+
+    single {
+        get<AppDatabase>().albumCache()
+    } bind AlbumCacheDao::class
+
+    single {
+        get<AppDatabase>().peopleCache()
+    } bind PeopleCacheDao::class
+
+    single {
+        get<AppDatabase>().labelCache()
+    } bind LabelCacheDao::class
 }

@@ -8,6 +8,10 @@ import ua.com.radiokot.photoprism.features.ext.memories.data.model.MemoryDbEntit
 import ua.com.radiokot.photoprism.features.ext.memories.data.storage.MemoriesDbDao
 import ua.com.radiokot.photoprism.features.gallery.data.model.SearchBookmarksDbEntity
 import ua.com.radiokot.photoprism.features.gallery.data.storage.SearchBookmarksDbDao
+import ua.com.radiokot.photoprism.features.labels.data.model.LabelCacheEntity
+import ua.com.radiokot.photoprism.features.people.data.model.PeopleCacheEntity
+import ua.com.radiokot.photoprism.features.people.data.storage.PeopleCacheDao
+import ua.com.radiokot.photoprism.features.labels.data.storage.LabelCacheDao
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncHistoryItem
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncedFile
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncFolder
@@ -16,7 +20,7 @@ import ua.com.radiokot.photoprism.features.sync.data.storage.SyncedFileDao
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
 
 @Database(
-    version = 15,
+    version = 18,
     entities = [
         SearchBookmarksDbEntity::class,
         MemoryDbEntity::class,
@@ -24,6 +28,9 @@ import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
         SyncFolder::class,
         SyncHistoryItem::class,
         CachedMediaEntity::class,
+        AlbumCacheEntity::class,
+        PeopleCacheEntity::class,
+        LabelCacheEntity::class,
     ],
     autoMigrations = [
         AutoMigration(from = 4, to = 5),
@@ -45,4 +52,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun syncFolders(): SyncFolderDao
     abstract fun syncHistory(): SyncHistoryItemDao
     abstract fun cachedMedia(): CachedMediaDao
+    abstract fun albumCache(): AlbumCacheDao
+    abstract fun peopleCache(): PeopleCacheDao
+    abstract fun labelCache(): LabelCacheDao
 }

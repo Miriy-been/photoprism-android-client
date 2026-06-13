@@ -164,9 +164,6 @@ val galleryFeatureModule = module {
             GalleryListViewModelImpl(
                 galleryPreferences = get(),
                 previewUrlFactory = get(),
-                thumbnailDiskCache = get(),
-                connectivityChecker = get(),
-                syncedFileDao = get(),
             )
         } bind GalleryListViewModel::class
 

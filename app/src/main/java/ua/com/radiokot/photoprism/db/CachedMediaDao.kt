@@ -19,6 +19,30 @@ interface CachedMediaDao {
     @Query("SELECT * FROM cached_media ORDER BY takenAtLocal DESC LIMIT :limit OFFSET :offset")
     fun getAllOrderedByDate(limit: Int, offset: Int): List<CachedMediaEntity>
 
+    @Query("""
+        SELECT * FROM cached_media 
+        WHERE (:query IS NULL OR title LIKE '%' || :query || '%')
+          AND (:mediaType IS NULL OR mediaType = :mediaType)
+          AND (:before IS NULL OR takenAtLocal <= :before)
+          AND (:after IS NULL OR takenAtLocal >= :after)
+          AND (:albumUid IS NULL OR albumUid = :albumUid)
+          AND (:onlyFavorite IS NULL OR favorite = :onlyFavorite)
+          AND (:includePrivate IS NULL OR isPrivate = 0 OR :includePrivate = 1)
+        ORDER BY takenAtLocal DESC 
+        LIMIT :limit OFFSET :offset
+    """)
+    fun getFilteredOrderedByDate(
+        query: String?,
+        mediaType: String?,
+        before: String?,
+        after: String?,
+        albumUid: String?,
+        onlyFavorite: Boolean?,
+        includePrivate: Boolean?,
+        limit: Int,
+        offset: Int,
+    ): List<CachedMediaEntity>
+
     @Query("SELECT * FROM cached_media WHERE favorite = 1 ORDER BY takenAtLocal DESC LIMIT :limit OFFSET :offset")
     fun getFavorites(limit: Int, offset: Int): List<CachedMediaEntity>
 

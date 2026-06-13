@@ -12,7 +12,13 @@ import ua.com.radiokot.photoprism.features.people.view.model.PeopleSelectionView
 val peopleFeatureModule = module {
 
     scope<EnvSession> {
-        scopedOf(::PeopleRepository)
+        scoped {
+            PeopleRepository(
+                photoPrismSubjectsService = get(),
+                photoPrismFacesService = get(),
+                peopleCacheDao = get(),
+            )
+        }
 
         viewModel {
             PeopleSelectionViewModel(

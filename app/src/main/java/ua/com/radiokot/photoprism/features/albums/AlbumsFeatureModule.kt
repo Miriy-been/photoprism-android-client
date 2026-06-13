@@ -40,6 +40,7 @@ val albumsFeatureModule = module {
         scoped {
             AlbumsRepository.Factory(
                 photoPrismAlbumsService = get(),
+                albumCacheDao = get(),
             )
         } bind AlbumsRepository.Factory::class
 

@@ -1,7 +1,6 @@
 package ua.com.radiokot.photoprism.features.gallery.view.model
 
 import android.content.Context
-import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -55,12 +54,6 @@ sealed class GalleryListItem : AbstractItem<ViewHolder>() {
         val isFavorite: Boolean,
         val source: GalleryMedia?,
         /**
-         * Local file URI for offline thumbnail display.
-         * When set, the [ViewHolder] will load from this URI
-         * instead of the network [thumbnailUrl].
-         */
-        val localThumbnailUri: Uri? = null,
-        /**
          * Do not forget to update [GalleryListItemDiffCallback]
          * when changing fields.
          */
@@ -72,7 +65,6 @@ sealed class GalleryListItem : AbstractItem<ViewHolder>() {
             isMediaSelected: Boolean,
             itemScale: GalleryItemScale,
             previewUrlFactory: MediaPreviewUrlFactory,
-            localThumbnailUri: Uri? = null,
         ) : this(
             thumbnailUrl = when (itemScale) {
                 GalleryItemScale.TINY ->
@@ -114,7 +106,6 @@ sealed class GalleryListItem : AbstractItem<ViewHolder>() {
             // Favorite icon is visible when needed, unless the scale is tiny.
             isFavorite = source.isFavorite && itemScale != GalleryItemScale.TINY,
             source = source,
-            localThumbnailUri = localThumbnailUri,
         )
 
         override var identifier: Long =
@@ -178,7 +169,7 @@ sealed class GalleryListItem : AbstractItem<ViewHolder>() {
                 with(view.imageView) {
                     contentDescription = item.title
 
-                    val imageUri = item.localThumbnailUri?.toString() ?: item.thumbnailUrl
+                    val imageUri = item.thumbnailUrl
 
                     picasso
                         .load(imageUri)

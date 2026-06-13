@@ -31,6 +31,7 @@ import ua.com.radiokot.photoprism.extension.toSingle
 import ua.com.radiokot.photoprism.features.gallery.data.model.GalleryItemsOrder
 import ua.com.radiokot.photoprism.features.gallery.data.model.GalleryMedia
 import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
+import ua.com.radiokot.photoprism.features.gallery.data.model.formatPhotoPrismDate
 import ua.com.radiokot.photoprism.features.gallery.data.model.parsePhotoPrismDate
 import ua.com.radiokot.photoprism.features.gallery.logic.MediaPreviewUrlFactory
 import ua.com.radiokot.photoprism.features.people.data.model.Person
@@ -205,16 +206,41 @@ class SimpleGalleryMediaRepository(
         limit: Int,
         cursor: String?,
     ): Single<DataPage<GalleryMedia>> {
+        if (params.hasPersonFilter) {
+            log.debug { "getOfflinePage(): person_filter_not_supported_offline" }
+            return Single.error(OfflinePersonFilterNotSupportedException())
+        }
+
         val offset = cursor?.toIntOrNull() ?: 0
 
         log.debug {
             "getOfflinePage(): loading_from_cache:" +
                     "\noffset=$offset," +
-                    "\nlimit=$limit"
+                    "\nlimit=$limit," +
+                    "\nuserQuery=${params.userQuery}" +
+                    "\nmediaType=${params.mediaTypeFilter}"
         }
 
         return Single.fromCallable {
-            val cachedEntities = cachedMediaDao.getAllOrderedByDate(limit, offset)
+            val query = params.userQuery
+            val mediaType = params.mediaTypeFilter
+            val before = params.beforeLocalFilter?.let { formatPhotoPrismDate(it) }
+            val after = params.afterLocalFilter?.let { formatPhotoPrismDate(it) }
+            val albumUid = params.albumUid
+            val onlyFavorite = params.onlyFavoriteFilter
+            val includePrivate = params.includePrivateFilter
+
+            val cachedEntities = cachedMediaDao.getFilteredOrderedByDate(
+                query = query,
+                mediaType = mediaType,
+                before = before,
+                after = after,
+                albumUid = albumUid,
+                onlyFavorite = onlyFavorite,
+                includePrivate = includePrivate,
+                limit = limit,
+                offset = offset,
+            )
             val items = cachedEntities.map { it.toGalleryMedia() }
             val isLast = cachedEntities.size < limit
 
@@ -232,7 +258,7 @@ class SimpleGalleryMediaRepository(
      */
     private fun cachePageItems(items: List<GalleryMedia>) {
         try {
-            val entities = items.map { it.toCachedEntity() }
+            val entities = items.map { it.toCachedEntity(params.albumUid) }
             cachedMediaDao.upsertAll(entities)
 
             // LRU eviction: if cache exceeds the limit, remove the oldest entries.
@@ -497,6 +523,31 @@ class SimpleGalleryMediaRepository(
         val postFilterExcludePersonIds: Set<String> = emptySet(),
         val pageLimit: Int = DEFAULT_PAGE_LIMIT,
         val itemsOrder: GalleryItemsOrder = GalleryItemsOrder.NEWEST_FIRST,
+        // Offline search filter fields
+        val offlineUserQuery: String? = null,
+        val offlineMediaType: String? = null,
+        val offlineBeforeLocal: LocalDate? = null,
+        val offlineAfterLocal: LocalDate? = null,
+        val userQuery: String? = null,
+        val mediaTypeFilter: String? = null,
+        val beforeLocalFilter: LocalDate? = null,
+        val afterLocalFilter: LocalDate? = null,
+        val albumUid: String? = null,
+        /**
+         * Whether to show only favorites offline.
+         * Null means no filter is applied.
+         */
+        val onlyFavoriteFilter: Boolean? = null,
+        /**
+         * Whether to include private content offline.
+         * Null means no filter is applied.
+         */
+        val includePrivateFilter: Boolean? = null,
+        /**
+         * Whether the search includes a person/subject filter.
+         * Offline cannot filter by person, so this triggers an error.
+         */
+        val hasPersonFilter: Boolean = false,
     ) : Parcelable {
 
         constructor(
@@ -511,6 +562,18 @@ class SimpleGalleryMediaRepository(
             postFilterExcludePersonIds = postFilterExcludePersonIds,
             pageLimit = pageLimit,
             itemsOrder = itemsOrder,
+            userQuery = searchConfig.userQuery.takeIf { it.isNotBlank() },
+            mediaTypeFilter = searchConfig.mediaTypes?.firstOrNull()?.value,
+            beforeLocalFilter = searchConfig.beforeLocal,
+            afterLocalFilter = searchConfig.afterLocal,
+            offlineUserQuery = searchConfig.userQuery.takeIf { it.isNotBlank() },
+            offlineMediaType = searchConfig.mediaTypes?.singleOrNull()?.value,
+            offlineBeforeLocal = searchConfig.beforeLocal,
+            offlineAfterLocal = searchConfig.afterLocal,
+            albumUid = searchConfig.albumUid,
+            onlyFavoriteFilter = searchConfig.onlyFavorite.takeIf { it },
+            includePrivateFilter = searchConfig.includePrivate,
+            hasPersonFilter = searchConfig.personIds.isNotEmpty(),
         )
 
         companion object {
@@ -587,3 +650,11 @@ class SimpleGalleryMediaRepository(
             toString()
     }
 }
+
+/**
+ * Thrown when offline and the search includes a person/subject filter
+ * which is not supported in the offline cache.
+ */
+class OfflinePersonFilterNotSupportedException : Exception(
+    "Person filter is not supported in offline mode"
+)

@@ -4,11 +4,14 @@ import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.kotlin.toCompletable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import kotlinx.coroutines.runBlocking
 import ua.com.radiokot.photoprism.api.albums.model.PhotoPrismAlbumCreation
 import ua.com.radiokot.photoprism.api.albums.service.PhotoPrismAlbumsService
 import ua.com.radiokot.photoprism.api.photos.model.PhotoPrismBatchPhotoUids
 import ua.com.radiokot.photoprism.base.data.model.DataPage
 import ua.com.radiokot.photoprism.base.data.storage.SimpleCollectionRepository
+import ua.com.radiokot.photoprism.db.AlbumCacheDao
+import ua.com.radiokot.photoprism.db.AlbumCacheEntity
 import ua.com.radiokot.photoprism.extension.toSingle
 import ua.com.radiokot.photoprism.features.albums.data.model.Album
 import ua.com.radiokot.photoprism.util.PagedCollectionLoader
@@ -20,6 +23,7 @@ import ua.com.radiokot.photoprism.util.PagedCollectionLoader
 class AlbumsRepository(
     private val types: Set<Album.TypeName>,
     private val photoPrismAlbumsService: PhotoPrismAlbumsService,
+    private val albumCacheDao: AlbumCacheDao,
 ) : SimpleCollectionRepository<Album>() {
     override fun getCollection(): Single<List<Album>> =
         Single.mergeDelayError(types.map(::getAlbumsOfType))
@@ -27,6 +31,54 @@ class AlbumsRepository(
                 collectedAlbums.addAll(albums)
             }
             .map(MutableList<Album>::toList)
+            .doOnSuccess { albums ->
+                runBlocking {
+                    types.forEach { type ->
+                        val entities = albums
+                            .filter { it.type == type }
+                            .mapIndexed { index, album ->
+                                AlbumCacheEntity(
+                                    uid = album.uid,
+                                    type = type.name.lowercase(),
+                                    title = album.title,
+                                    thumbnailHash = album.thumbnailHash.takeIf { it.isNotEmpty() },
+                                    photoCount = albums.count { it.type == type },
+                                    path = album.path,
+                                    ymd = album.ymd.takeIf { it != Album.YMD_UNSPECIFIED },
+                                    cachedAt = System.currentTimeMillis(),
+                                )
+                            }
+                        albumCacheDao.deleteByType(type.name.lowercase())
+                        albumCacheDao.upsertAll(entities)
+                    }
+                }
+            }
+            .onErrorResumeNext { error ->
+                runBlocking {
+                    val cachedByType = types.mapNotNull { type ->
+                        val entities = albumCacheDao.getByType(type.name.lowercase())
+                        if (entities.isNotEmpty()) type to entities else null
+                    }
+                    val allCached = cachedByType.flatMap { (type, entities) ->
+                        entities.map { entity ->
+                            Album(
+                                type = type,
+                                title = entity.title,
+                                path = entity.path,
+                                uid = entity.uid,
+                                isFavorite = false,
+                                ymd = entity.ymd ?: Album.YMD_UNSPECIFIED,
+                                thumbnailHash = entity.thumbnailHash ?: "",
+                            )
+                        }
+                    }
+                    if (allCached.isNotEmpty()) {
+                        Single.just(allCached)
+                    } else {
+                        Single.error(error)
+                    }
+                }
+            }
 
     /**
      * @return [Album] found by [uid] in the [itemsList]
@@ -109,11 +161,13 @@ class AlbumsRepository(
 
     class Factory(
         private val photoPrismAlbumsService: PhotoPrismAlbumsService,
+        private val albumCacheDao: AlbumCacheDao,
     ) {
         val albums: AlbumsRepository by lazy {
             AlbumsRepository(
                 types = setOf(Album.TypeName.ALBUM),
                 photoPrismAlbumsService = photoPrismAlbumsService,
+                albumCacheDao = albumCacheDao,
             )
         }
 
@@ -121,6 +175,7 @@ class AlbumsRepository(
             AlbumsRepository(
                 types = setOf(Album.TypeName.FOLDER),
                 photoPrismAlbumsService = photoPrismAlbumsService,
+                albumCacheDao = albumCacheDao,
             )
         }
 
@@ -128,6 +183,7 @@ class AlbumsRepository(
             AlbumsRepository(
                 types = setOf(Album.TypeName.MONTH),
                 photoPrismAlbumsService = photoPrismAlbumsService,
+                albumCacheDao = albumCacheDao,
             )
         }
 

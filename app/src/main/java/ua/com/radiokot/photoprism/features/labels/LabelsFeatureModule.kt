@@ -18,6 +18,7 @@ val labelsFeatureModule = module {
         scoped {
             LabelsRepository.Factory(
                 photoPrismLabelsService = get(),
+                labelCacheDao = get(),
             )
         } bind LabelsRepository.Factory::class
 

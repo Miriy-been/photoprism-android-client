@@ -56,13 +56,7 @@ class SyncNotificationsManager(
         ensureChannel()
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(context.getString(R.string.sync_notification_progress_title))
-            .setContentText(
-                context.resources.getQuantityString(
-                    R.plurals.sync_notification_progress_count,
-                    0,
-                    0,
-                )
-            )
+            .setContentText(context.getString(R.string.sync_notification_preparing))
             .setProgress(0, 0, true)
             .setColor(ContextCompat.getColor(context, R.color.md_theme_light_primary))
             .setSmallIcon(R.drawable.ic_upload_white)
@@ -74,6 +68,24 @@ class SyncNotificationsManager(
                 createPausePendingIntent(),
             )
             .build()
+    }
+
+    fun notifyPreparing() {
+        ensureChannel()
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle(context.getString(R.string.sync_notification_progress_title))
+            .setContentText(context.getString(R.string.sync_notification_preparing))
+            .setProgress(0, 0, true)
+            .setColor(ContextCompat.getColor(context, R.color.md_theme_light_primary))
+            .setSmallIcon(R.drawable.ic_upload_white)
+            .setOngoing(true)
+            .addAction(
+                0,
+                context.getString(R.string.sync_notification_pause),
+                createPausePendingIntent(),
+            )
+            .build()
+        notificationsManager.notify(SYNC_PROGRESS_NOTIFICATION_ID, notification)
     }
 
     private fun createPausePendingIntent(): PendingIntent {

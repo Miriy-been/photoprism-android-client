@@ -343,10 +343,11 @@
     <string name="sync_remove_folder">移除</string>
     <string name="sync_wifi_only">仅 Wi-Fi 下同步</string>
     <string name="sync_notification_channel">照片同步</string>
+    <string name="sync_notification_preparing">正在准备…</string>
     <string name="sync_notification_progress_title">正在同步照片…</string>
     <string name="sync_notification_progress_folder">正在同步 %s…</string>
     <string name="sync_complete_title">同步完成</string>
-    <string name="sync_complete_text">%d 张新照片已上传</string>
+    <string name="sync_complete_text">%d 张照片已同步</string>
     <string name="sync_failed_title">同步失败</string>
     <string name="sync_failed_text">%d 张照片未能上传</string>
     <string name="sync_failed_partial_text">%1$d 张已上传，%2$d 张失败</string>

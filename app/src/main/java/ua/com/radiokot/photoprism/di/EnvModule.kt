@@ -22,6 +22,7 @@ import ua.com.radiokot.photoprism.env.data.model.EnvSession
 import ua.com.radiokot.photoprism.env.logic.PhotoPrismSessionCreator
 import ua.com.radiokot.photoprism.env.logic.SessionCreator
 import ua.com.radiokot.photoprism.extension.checkNotNull
+import ua.com.radiokot.photoprism.base.util.LocalFirstDownloader
 import ua.com.radiokot.photoprism.util.CacheConstraints
 import java.io.File
 
@@ -181,22 +182,24 @@ val envModule = module {
             }
 
             // Note: Cache only works properly if there are no redirects in the library URL.
-            // For example, https://try.photoprism.app redirects to https://demo.photoprism.app
-            // so calls are always sent to the server to get the redirect and only then
-            // the cache candidate is obtained and returned.
             val cacheControl = CacheControl.Builder()
-                // Assumption: PhotoPrism content identified by hash is immutable.
                 .immutable()
                 .build()
 
+            val delegate = OkHttp3Downloader { request ->
+                httpClient.newCall(
+                    request.newBuilder()
+                        .cacheControl(cacheControl)
+                        .build()
+                )
+            }
+
             Picasso.Builder(get())
-                .downloader(OkHttp3Downloader { request ->
-                    httpClient.newCall(
-                        request.newBuilder()
-                            .cacheControl(cacheControl)
-                            .build()
-                    )
-                })
+                .downloader(LocalFirstDownloader(
+                    delegate = delegate,
+                    thumbnailDiskCache = get(),
+                    syncedFileDao = get(),
+                ))
                 .build()
         } bind Picasso::class
     }

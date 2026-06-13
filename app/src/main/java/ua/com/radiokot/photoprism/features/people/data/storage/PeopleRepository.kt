@@ -2,12 +2,15 @@ package ua.com.radiokot.photoprism.features.people.data.storage
 
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.schedulers.Schedulers
+import kotlinx.coroutines.runBlocking
 import ua.com.radiokot.photoprism.api.faces.service.PhotoPrismFacesService
 import ua.com.radiokot.photoprism.api.subjects.service.PhotoPrismSubjectsService
 import ua.com.radiokot.photoprism.base.data.model.DataPage
 import ua.com.radiokot.photoprism.base.data.storage.SimpleCollectionRepository
 import ua.com.radiokot.photoprism.extension.toSingle
+import ua.com.radiokot.photoprism.features.people.data.model.PeopleCacheEntity
 import ua.com.radiokot.photoprism.features.people.data.model.Person
+import ua.com.radiokot.photoprism.features.people.data.storage.PeopleCacheDao
 import ua.com.radiokot.photoprism.util.PagedCollectionLoader
 
 /**
@@ -20,6 +23,7 @@ import ua.com.radiokot.photoprism.util.PagedCollectionLoader
 class PeopleRepository(
     private val photoPrismSubjectsService: PhotoPrismSubjectsService,
     private val photoPrismFacesService: PhotoPrismFacesService,
+    private val peopleCacheDao: PeopleCacheDao,
 ) : SimpleCollectionRepository<Person>() {
     private val comparator =
         compareByDescending(Person::isFavorite)
@@ -36,6 +40,40 @@ class PeopleRepository(
                 collectedPeople.addAll(people)
             }
             .map { it.sortedWith(comparator) }
+            .doOnSuccess { people ->
+                runBlocking {
+                    val entities = people.map { person ->
+                        PeopleCacheEntity(
+                            id = person.id,
+                            name = person.name,
+                            isFavorite = person.isFavorite,
+                            photoCount = person.photoCount,
+                            thumbnailHash = person.thumbnailHash.takeIf { it.isNotEmpty() },
+                            cachedAt = System.currentTimeMillis(),
+                        )
+                    }
+                    peopleCacheDao.upsertAll(entities)
+                }
+            }
+            .onErrorResumeNext { error ->
+                runBlocking {
+                    val cached = peopleCacheDao.getAll()
+                    if (cached.isNotEmpty()) {
+                        Single.just(cached.map { entity ->
+                            Person(
+                                name = entity.name,
+                                id = entity.id,
+                                isFavorite = entity.isFavorite,
+                                isFace = false,
+                                photoCount = entity.photoCount,
+                                thumbnailHash = entity.thumbnailHash ?: "",
+                            )
+                        })
+                    } else {
+                        Single.error(error)
+                    }
+                }
+            }
 
     private fun getFromPersonSubjects(): Single<List<Person>> {
         val loader = PagedCollectionLoader(
