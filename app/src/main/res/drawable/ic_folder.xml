@@ -1,13 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 侘寂风格 - 文件夹 icon -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="478"
-    android:viewportHeight="478">
+    android:viewportWidth="24"
+    android:viewportHeight="24">
 
+    <!-- 文件夹主体 -->
     <path
-        android:fillColor="#000"
-        android:pathData="M81,201a66,66 0,0 0,-39.8 72L60,385.9c5.6,34 35.1,58.8 69.5,58.8h218.7a70.1,70.1 0,0 0,69.4 -58.8L436.4,273a66.4,66.4 0,0 0,-39.7 -72l-6.5,-2.7v-43.8c0,-31.5 -25.5,-57 -57,-57h-53.4a17.7,17.7 0,0 1,-12.2 -5l-38.1,-38.1a36.6,36.6 0,0 0,-26 -10.8h-59c-31.5,0 -57,25.5 -57,57v97.7l-6.4,2.6ZM357.2,176v3h0.1v17L120.6,196v-32.5h-0.1v-62.8a24,24 0,0 1,24 -24h53.4c4.5,0 9,1.9 12.2,5l38.2,38.2a36.6,36.6 0,0 0,25.9 10.7h59a24,24 0,0 1,24 24L357.2,176ZM92.6,380.5 L73.8,267.8a33.4,33.4 0,0 1,32.9 -38.7h264.2a33.4,33.4 0,0 1,33 38.5l-18.7,112.8c-3,18 -18.5,31.2 -37,31.2L129.6,411.6a37.3,37.3 0,0 1,-36.9 -31.2Z"
-        android:strokeWidth="6"
-        android:strokeColor="#000" />
-
+        android:pathData="M2.5,6a1.5,1.5 0,0 1,1.5 -1.5h5l2,3h9a1.5,1.5 0,0 1,1.5 1.5v9a1.5,1.5 0,0 1,-1.5 1.5H4A1.5,1.5 0,0 1,2.5 18V6z"
+        android:strokeWidth="1.8"
+        android:strokeColor="#1A1A1A"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

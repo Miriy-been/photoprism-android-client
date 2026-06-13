@@ -197,9 +197,15 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:background="@color/wabi_bg_card"
-        android:elevation="8dp"
         android:orientation="horizontal"
         android:padding="12dp">
+
+        <!-- 侘寂：底部操作栏仅用 0.5dp 分割线替代阴影 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:layout_marginTop="-12dp"
+            android:background="@color/wabi_divider" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/cancel_button"

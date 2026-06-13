@@ -1,5 +1,6 @@
 package ua.com.radiokot.photoprism.features.prefs.navcustomize.view
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -10,8 +11,15 @@ import org.koin.android.ext.android.inject
 import ua.com.radiokot.photoprism.base.view.BaseActivity
 import ua.com.radiokot.photoprism.databinding.ActivityCustomizeNavBinding
 import ua.com.radiokot.photoprism.databinding.ListItemCustomizeNavBinding
+import ua.com.radiokot.photoprism.R
+import ua.com.radiokot.photoprism.features.albums.data.model.Album
+import ua.com.radiokot.photoprism.features.albums.view.AlbumsActivity
+import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
 import ua.com.radiokot.photoprism.features.gallery.data.storage.BottomNavItemId
 import ua.com.radiokot.photoprism.features.gallery.data.storage.GalleryNavPreferences
+import ua.com.radiokot.photoprism.features.gallery.data.storage.SimpleGalleryMediaRepository
+import ua.com.radiokot.photoprism.features.gallery.view.GalleryActivity
+import ua.com.radiokot.photoprism.features.gallery.view.GallerySingleRepositoryActivity
 
 /**
  * 侘寂 — 底部菜单栏自定义界面。
@@ -53,7 +61,6 @@ class CustomizeNavActivity : BaseActivity() {
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         adapter = NavItemAdapter()
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
@@ -81,16 +88,70 @@ class CustomizeNavActivity : BaseActivity() {
             override fun isLongPressDragEnabled(): Boolean = false
         })
         itemTouchHelper.attachToRecyclerView(binding.recyclerView)
+
+        initBottomNav()
+    }
+
+    private fun initBottomNav() {
+        // Customize nav is a settings page, no bottom nav item is "active"
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            saveConfig()
+            when (item.itemId) {
+                R.id.bottom_photos -> {
+                    startActivity(
+                        Intent(this, GalleryActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        }
+                    )
+                    true
+                }
+
+                R.id.bottom_albums -> {
+                    startActivity(
+                        Intent(this, AlbumsActivity::class.java)
+                            .setAction(intent.action)
+                            .putExtras(intent.extras ?: Bundle())
+                            .putExtras(
+                                AlbumsActivity.getBundle(
+                                    albumType = Album.TypeName.FOLDER,
+                                    defaultSearchConfig = SearchConfig.DEFAULT,
+                                )
+                            )
+                    )
+                    true
+                }
+
+                R.id.bottom_favorites -> {
+                    startActivity(
+                        Intent(this, GallerySingleRepositoryActivity::class.java)
+                            .putExtras(intent.extras ?: Bundle())
+                            .putExtras(
+                                GallerySingleRepositoryActivity.getBundle(
+                                    title = getString(R.string.favorites),
+                                    repositoryParams = SimpleGalleryMediaRepository.Params(
+                                        searchConfig = SearchConfig.DEFAULT.copy(
+                                            onlyFavorite = true,
+                                        ),
+                                    ),
+                                )
+                            )
+                    )
+                    true
+                }
+
+                R.id.bottom_more -> {
+                    finish()
+                    true
+                }
+
+                else -> false
+            }
+        }
     }
 
     override fun onBackPressed() {
         saveConfig()
         super.onBackPressed()
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        saveConfig()
-        return super.onSupportNavigateUp()
     }
 
     private fun saveConfig() {

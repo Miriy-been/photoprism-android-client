@@ -23,6 +23,7 @@ import ua.com.radiokot.photoprism.featureflags.extension.hasMap
 import ua.com.radiokot.photoprism.featureflags.logic.FeatureFlags
 import ua.com.radiokot.photoprism.features.albums.data.model.Album
 import ua.com.radiokot.photoprism.features.envconnection.logic.DisconnectFromEnvUseCase
+import ua.com.radiokot.photoprism.features.gallery.data.storage.BottomNavItemId
 import ua.com.radiokot.photoprism.features.ext.memories.view.model.GalleryMemoriesListViewModel
 import ua.com.radiokot.photoprism.features.gallery.data.model.GalleryMedia
 import ua.com.radiokot.photoprism.features.gallery.data.model.GalleryMonth
@@ -538,7 +539,8 @@ class GalleryViewModel(
 
     fun onFoldersClicked() {
         eventsSubject.onNext(
-            Event.OpenAlbums(
+            Event.SwitchToTab(
+                tabId = BottomNavItemId.FOLDERS,
                 albumType = Album.TypeName.FOLDER,
                 defaultSearchConfig = getStateDefaultSearchConfig(),
             )
@@ -547,7 +549,8 @@ class GalleryViewModel(
 
     fun onAlbumsClicked() {
         eventsSubject.onNext(
-            Event.OpenAlbums(
+            Event.SwitchToTab(
+                tabId = BottomNavItemId.ALBUMS,
                 albumType = Album.TypeName.ALBUM,
                 defaultSearchConfig = getStateDefaultSearchConfig(),
             )
@@ -556,13 +559,16 @@ class GalleryViewModel(
 
     fun onPlacesClicked() {
         eventsSubject.onNext(
-            Event.OpenMap
+            Event.SwitchToTab(
+                tabId = BottomNavItemId.PLACES,
+            )
         )
     }
 
     fun onCalendarClicked() {
         eventsSubject.onNext(
-            Event.OpenAlbums(
+            Event.SwitchToTab(
+                tabId = BottomNavItemId.CALENDAR,
                 albumType = Album.TypeName.MONTH,
                 defaultSearchConfig = getStateDefaultSearchConfig(),
             )
@@ -571,7 +577,8 @@ class GalleryViewModel(
 
     fun onFavoritesClicked() {
         eventsSubject.onNext(
-            Event.OpenFavorites(
+            Event.SwitchToTab(
+                tabId = BottomNavItemId.FAVORITES,
                 repositoryParams = SimpleGalleryMediaRepository.Params(
                     searchConfig = getStateDefaultSearchConfig().copy(
                         onlyFavorite = true,
@@ -583,7 +590,8 @@ class GalleryViewModel(
 
     fun onLabelsClicked() {
         eventsSubject.onNext(
-            Event.OpenLabels(
+            Event.SwitchToTab(
+                tabId = BottomNavItemId.LABELS,
                 defaultSearchConfig = getStateDefaultSearchConfig(),
             )
         )
@@ -591,6 +599,10 @@ class GalleryViewModel(
 
     fun onUploadClicked() {
         eventsSubject.onNext(Event.OpenUpload)
+    }
+
+    fun onSyncClicked() {
+        eventsSubject.onNext(Event.OpenSync)
     }
 
     fun onDoneMultipleSelectionClicked() {
@@ -868,22 +880,17 @@ class GalleryViewModel(
         @JvmInline
         value class ShowFloatingError(val error: Error) : Event
 
+        /**
+         * Switch to the given bottom navigation tab.
+         */
+        class SwitchToTab(
+            val tabId: BottomNavItemId,
+            val albumType: Album.TypeName? = null,
+            val defaultSearchConfig: SearchConfig? = null,
+            val repositoryParams: SimpleGalleryMediaRepository.Params? = null,
+        ) : Event
+
         object OpenPreferences : Event
-
-        class OpenAlbums(
-            val albumType: Album.TypeName,
-            val defaultSearchConfig: SearchConfig,
-        ) : Event
-
-        class OpenFavorites(
-            val repositoryParams: SimpleGalleryMediaRepository.Params,
-        ) : Event
-
-        class OpenLabels(
-            val defaultSearchConfig: SearchConfig,
-        ) : Event
-
-        object OpenMap : Event
 
         /**
          * Close the screen and go to the connection,
@@ -897,6 +904,8 @@ class GalleryViewModel(
         class OpenWebViewerForRedirectHandling(val url: String) : Event
 
         object OpenUpload : Event
+
+        object OpenSync : Event
     }
 
     sealed interface Error {

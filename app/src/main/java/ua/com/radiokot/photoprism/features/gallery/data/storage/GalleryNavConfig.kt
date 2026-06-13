@@ -62,8 +62,8 @@ enum class BottomNavItemId(
     ;
 
     companion object {
-        /** 默认底部栏配置：照片 | 收藏 */
-        val DEFAULT = listOf(PHOTOS, FAVORITES)
+        /** 默认底部栏配置：图库 | 相册 | 收藏 */
+        val DEFAULT = listOf(PHOTOS, ALBUMS, FAVORITES)
 
         /** 底部栏最多显示项数（不含"更多"） */
         const val MAX_VISIBLE_ITEMS = 4

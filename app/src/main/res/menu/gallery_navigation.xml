@@ -39,6 +39,11 @@
         android:title="@string/folders" />
 
     <item
+        android:id="@+id/sync_settings"
+        android:icon="@drawable/ic_reorder"
+        android:title="@string/sync_settings" />
+
+    <item
         android:id="@+id/upload"
         android:icon="@drawable/ic_upload"
         android:title="@string/upload" />

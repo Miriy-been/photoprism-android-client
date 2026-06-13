@@ -1,8 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 侘寂"更多"菜单 — 底部弹窗，展示原抽屉菜单中的次级功能 -->
+<!-- 侘寂"更多"菜单 — 简化版：仅同步设置、自定义底部栏、偏好设置 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -15,104 +13,40 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="@dimen/wabi_spacing_md"
         android:layout_marginBottom="@dimen/wabi_spacing_sm"
-        android:text="更多"
+        android:text="@string/more"
         android:textAppearance="@style/TextAppearance.Wabi.Title3"
         android:textColor="@color/wabi_text_primary" />
 
-    <!-- 收藏 -->
+    <!-- 同步设置 -->
     <LinearLayout
-        android:id="@+id/more_favorites"
+        android:id="@+id/more_sync_settings"
         style="@style/WabiMoreMenuItem"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
         <androidx.appcompat.widget.AppCompatImageView
             style="@style/WabiMoreMenuIcon"
-            android:src="@drawable/ic_favorite" />
+            android:src="@drawable/ic_reorder" />
 
         <TextView
             style="@style/WabiMoreMenuText"
-            android:text="收藏" />
+            android:text="@string/sync_settings" />
     </LinearLayout>
 
-    <!-- 地图 -->
+    <!-- 自定义底部菜单栏 -->
     <LinearLayout
-        android:id="@+id/more_places"
+        android:id="@+id/more_customize_nav"
         style="@style/WabiMoreMenuItem"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
         <androidx.appcompat.widget.AppCompatImageView
             style="@style/WabiMoreMenuIcon"
-            android:src="@drawable/ic_map" />
+            android:src="@drawable/ic_menu" />
 
         <TextView
             style="@style/WabiMoreMenuText"
-            android:text="地图" />
-    </LinearLayout>
-
-    <!-- 日历 -->
-    <LinearLayout
-        android:id="@+id/more_calendar"
-        style="@style/WabiMoreMenuItem"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <androidx.appcompat.widget.AppCompatImageView
-            style="@style/WabiMoreMenuIcon"
-            android:src="@drawable/ic_calendar" />
-
-        <TextView
-            style="@style/WabiMoreMenuText"
-            android:text="日历" />
-    </LinearLayout>
-
-    <!-- 标签 -->
-    <LinearLayout
-        android:id="@+id/more_labels"
-        style="@style/WabiMoreMenuItem"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <androidx.appcompat.widget.AppCompatImageView
-            style="@style/WabiMoreMenuIcon"
-            android:src="@drawable/ic_label" />
-
-        <TextView
-            style="@style/WabiMoreMenuText"
-            android:text="标签" />
-    </LinearLayout>
-
-    <!-- 文件夹 -->
-    <LinearLayout
-        android:id="@+id/more_folders"
-        style="@style/WabiMoreMenuItem"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <androidx.appcompat.widget.AppCompatImageView
-            style="@style/WabiMoreMenuIcon"
-            android:src="@drawable/ic_folder" />
-
-        <TextView
-            style="@style/WabiMoreMenuText"
-            android:text="文件夹" />
-    </LinearLayout>
-
-    <!-- 上传 -->
-    <LinearLayout
-        android:id="@+id/more_upload"
-        style="@style/WabiMoreMenuItem"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <androidx.appcompat.widget.AppCompatImageView
-            style="@style/WabiMoreMenuIcon"
-            android:src="@drawable/ic_upload" />
-
-        <TextView
-            style="@style/WabiMoreMenuText"
-            android:text="上传" />
+            android:text="@string/customize_bottom_nav_title" />
     </LinearLayout>
 
     <!-- 分割线 -->
@@ -136,7 +70,7 @@
 
         <TextView
             style="@style/WabiMoreMenuText"
-            android:text="偏好设置" />
+            android:text="@string/preferences" />
     </LinearLayout>
 
 </LinearLayout>

@@ -1,5 +1,6 @@
 package ua.com.radiokot.photoprism.features.gallery.view
 
+import android.content.Intent
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -16,10 +17,17 @@ import ua.com.radiokot.photoprism.databinding.DialogMoreMenuBinding
 import ua.com.radiokot.photoprism.features.gallery.data.storage.BottomNavItemId
 import ua.com.radiokot.photoprism.features.gallery.search.view.GallerySearchBarView
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryViewModel
+import ua.com.radiokot.photoprism.features.prefs.navcustomize.view.CustomizeNavActivity
 
 class GalleryNavigationView(
     private val viewModel: GalleryViewModel,
 ) {
+    /**
+     * 当 [switchToTab] 程序化设置 selectedItemId 时设为 true，
+     * 防止 OnItemSelectedListener 递归触发。
+     */
+    var suppressProgrammaticSelection = false
+
     private var closeDrawer: (() -> Unit)? = null
     val backPressedCallback: OnBackPressedCallback =
         object : OnBackPressedCallback(false) {
@@ -91,6 +99,12 @@ class GalleryNavigationView(
 
         // 统一点击分发
         bottomNavigation.setOnItemSelectedListener { item ->
+            // 防止程序化选中触发递归
+            if (suppressProgrammaticSelection) {
+                suppressProgrammaticSelection = false
+                return@setOnItemSelectedListener true
+            }
+
             val action = bottomNavActions[item.itemId]
             if (action != null) {
                 action(viewModel)
@@ -112,35 +126,18 @@ class GalleryNavigationView(
             action()
         }
 
-        // 仅显示不在底部栏中的项
-        val bottomItemIds = bottomConfig.map { it.menuResId }.toSet()
-
         with(binding) {
-            moreFavorites.visibility = if (R.id.favorites in bottomItemIds) View.GONE else View.VISIBLE
-            morePlaces.visibility = if (R.id.places in bottomItemIds) View.GONE else View.VISIBLE
-            moreCalendar.visibility = if (R.id.calendar in bottomItemIds) View.GONE else View.VISIBLE
-            moreLabels.visibility = if (R.id.labels in bottomItemIds) View.GONE else View.VISIBLE
-            moreFolders.visibility = if (R.id.folders in bottomItemIds) View.GONE else View.VISIBLE
-            moreUpload.visibility = if (R.id.upload in bottomItemIds) View.GONE else View.VISIBLE
-            morePreferences.visibility = if (R.id.preferences in bottomItemIds) View.GONE else View.VISIBLE
-
-            moreFavorites.setOnClickListener {
-                closeAnd(viewModel::onFavoritesClicked)
+            moreSyncSettings.setOnClickListener {
+                closeAnd(viewModel::onSyncClicked)
             }
-            morePlaces.setOnClickListener {
-                closeAnd(viewModel::onPlacesClicked)
-            }
-            moreCalendar.setOnClickListener {
-                closeAnd(viewModel::onCalendarClicked)
-            }
-            moreLabels.setOnClickListener {
-                closeAnd(viewModel::onLabelsClicked)
-            }
-            moreFolders.setOnClickListener {
-                closeAnd(viewModel::onFoldersClicked)
-            }
-            moreUpload.setOnClickListener {
-                closeAnd(viewModel::onUploadClicked)
+            moreCustomizeNav.setOnClickListener {
+                closeAnd {
+                    viewModel.run {
+                        anchorView.context.startActivity(
+                            Intent(anchorView.context, CustomizeNavActivity::class.java)
+                        )
+                    }
+                }
             }
             morePreferences.setOnClickListener {
                 closeAnd(viewModel::onPreferencesClicked)
@@ -180,6 +177,9 @@ class GalleryNavigationView(
 
         navigationMenu.findItem(R.id.folders)
             .setOnMenuItemClickListener(getClickListener(viewModel::onFoldersClicked))
+
+        navigationMenu.findItem(R.id.sync_settings)
+            .setOnMenuItemClickListener(getClickListener(viewModel::onSyncClicked))
 
         navigationMenu.findItem(R.id.upload)
             .setOnMenuItemClickListener(getClickListener(viewModel::onUploadClicked))

@@ -1,27 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 侘寂风格 - 图库/照片 icon -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-  <path
-      android:pathData="M5,9a3,3 0,0 1,3 -3h8a3,3 0,0 1,3 3v6a3,3 0,0 1,-3 3H8a3,3 0,0 1,-3 -3V9z"
-      android:strokeLineJoin="round"
-      android:strokeWidth="2"
-      android:fillColor="#00000000"
-      android:strokeColor="#000"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="m12.9,12.5 l2.4,-2.3a1,1 0,0 1,1.4 0l2.3,2.4m-14,0.8 l3.7,-3.7a1,1 0,0 1,1.4 0l2.8,2.8 2,2.1"
-      android:strokeLineJoin="round"
-      android:strokeWidth="2"
-      android:fillColor="#00000000"
-      android:strokeColor="#000"
-      android:strokeLineCap="round"/>
-  <path
-      android:pathData="M3.4,1.8h17.2M3.4,22.2h17.2"
-      android:strokeLineJoin="round"
-      android:strokeWidth="2"
-      android:fillColor="#00000000"
-      android:strokeColor="#000"
-      android:strokeLineCap="round"/>
+
+    <!-- 相框 -->
+    <path
+        android:pathData="M4,5.5h16a1.5,1.5 0,0 1,1.5 1.5v10a1.5,1.5 0,0 1,-1.5 1.5H4a1.5,1.5 0,0 1,-1.5 -1.5V7a1.5,1.5 0,0 1,1.5 -1.5z"
+        android:strokeWidth="1.8"
+        android:strokeColor="#1A1A1A"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- 山景 -->
+    <path
+        android:pathData="m2.5,15 l4,-4a1,1 0,0 1,1.4 0l3,3 2.3,-2.3a1,1 0,0 1,1.4 0l4.4,4.4"
+        android:strokeWidth="1.8"
+        android:strokeColor="#1A1A1A"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- 太阳 -->
+    <path
+        android:pathData="M16,6A2,2 0,1,1 16,10A2,2 0,1,1 16,6z"
+        android:strokeWidth="1.8"
+        android:strokeColor="#1A1A1A"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

@@ -8,14 +8,28 @@
     android:orientation="vertical"
     tools:context=".features.gallery.view.GalleryActivity">
 
-    <androidx.coordinatorlayout.widget.CoordinatorLayout
-        android:id="@+id/content_layout"
+    <FrameLayout
+        android:id="@+id/content_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <include layout="@layout/include_activity_gallery_content" />
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+        <!-- 照片网格原生内容（图库 Tab） -->
+        <androidx.coordinatorlayout.widget.CoordinatorLayout
+            android:id="@+id/native_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <include layout="@layout/include_activity_gallery_content" />
+        </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+        <!-- Fragment 容器（其他 Tab） -->
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/fragment_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <!-- 侘寂底部导航栏 -->
     <com.google.android.material.bottomnavigation.BottomNavigationView

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 底部导航栏项 ID（代码中引用，不依赖菜单 XML） -->
+    <item name="bottom_photos" type="id" />
+    <item name="bottom_search" type="id" />
+    <item name="bottom_albums" type="id" />
+    <item name="bottom_favorites" type="id" />
+    <item name="bottom_more" type="id" />
+    <item name="more_sync_settings" type="id" />
+</resources>

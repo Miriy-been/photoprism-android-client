@@ -1,63 +1,85 @@
 package ua.com.radiokot.photoprism.features.labels.view
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.util.AttributeSet
+import android.view.LayoutInflater
 import android.view.Menu
+import android.view.MenuInflater
+import android.view.View
+import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.doOnPreDraw
+import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.adapters.ItemAdapter
 import me.zhanghai.android.fastscroll.FastScrollerBuilder
+import org.koin.android.ext.android.getKoin
+import org.koin.android.scope.AndroidScopeComponent
+import org.koin.androidx.scope.createFragmentScope
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.core.scope.Scope
 import ua.com.radiokot.photoprism.R
-import ua.com.radiokot.photoprism.base.view.BaseActivity
 import ua.com.radiokot.photoprism.databinding.ActivityLabelsBinding
 import ua.com.radiokot.photoprism.extension.kLogger
-import ua.com.radiokot.photoprism.extension.proxyOkResult
 import ua.com.radiokot.photoprism.extension.subscribe
-import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
-import ua.com.radiokot.photoprism.features.gallery.data.storage.SimpleGalleryMediaRepository
+import ua.com.radiokot.photoprism.features.albums.data.model.Album
+import ua.com.radiokot.photoprism.features.albums.view.AlbumsActivity
 import ua.com.radiokot.photoprism.features.gallery.search.extension.bindToViewModel
 import ua.com.radiokot.photoprism.features.gallery.search.extension.fixCloseButtonColor
 import ua.com.radiokot.photoprism.features.gallery.search.extension.hideUnderline
-import ua.com.radiokot.photoprism.features.albums.data.model.Album
-import ua.com.radiokot.photoprism.features.albums.view.AlbumsActivity
+import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
+import ua.com.radiokot.photoprism.features.gallery.data.storage.BottomNavItemId
+import ua.com.radiokot.photoprism.features.gallery.data.storage.SimpleGalleryMediaRepository
 import ua.com.radiokot.photoprism.features.gallery.view.GalleryActivity
 import ua.com.radiokot.photoprism.features.gallery.view.GallerySingleRepositoryActivity
 import ua.com.radiokot.photoprism.features.labels.view.model.LabelListItem
 import ua.com.radiokot.photoprism.features.labels.view.model.LabelsViewModel
+import ua.com.radiokot.photoprism.di.DI_SCOPE_SESSION
 import ua.com.radiokot.photoprism.view.ErrorView
 
-class LabelsActivity : BaseActivity() {
+class LabelsFragment : Fragment(), AndroidScopeComponent {
 
-    private val log = kLogger("LabelsActivity")
-    private lateinit var view: ActivityLabelsBinding
+    override val scope: Scope by lazy {
+        getKoin().getScope(DI_SCOPE_SESSION)
+            .apply { linkTo(createFragmentScope()) }
+    }
+
+    private val log = kLogger("LabelsFragment")
+    private lateinit var binding: ActivityLabelsBinding
     private val viewModel: LabelsViewModel by viewModel()
+    private var defaultSearchConfig: SearchConfig = SearchConfig.DEFAULT
+
     private val labelLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-        this::proxyOkResult,
-    )
+        ActivityResultContracts.StartActivityForResult()
+    ) { }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
+    ): View {
+        binding = ActivityLabelsBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
-        view = ActivityLabelsBinding.inflate(layoutInflater)
-        setContentView(view.root)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        @Suppress("DEPRECATION")
+        defaultSearchConfig = requireArguments().getParcelable(DEFAULT_SEARCH_CONFIG_ARG)!!
 
         @Suppress("DEPRECATION")
         viewModel.initOnce(
-            defaultSearchConfig = intent.getParcelableExtra(DEFAULT_SEARCH_CONFIG_EXTRA)!!,
+            defaultSearchConfig = defaultSearchConfig,
         )
 
         initToolbar()
         // Init the list once it is laid out.
-        view.labelsRecyclerView.doOnPreDraw {
+        binding.labelsRecyclerView.doOnPreDraw {
             initList()
         }
         initErrorView()
@@ -66,16 +88,70 @@ class LabelsActivity : BaseActivity() {
         subscribeToEvents()
 
         // Allow the view model to intercept back press.
-        onBackPressedDispatcher.addCallback(viewModel.backPressedCallback)
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            viewModel.backPressedCallback,
+        )
     }
 
     private fun initToolbar() {
-        setSupportActionBar(view.toolbar)
+        (requireActivity() as? androidx.appcompat.app.AppCompatActivity)?.setSupportActionBar(binding.toolbar)
+        setHasOptionsMenu(true)
     }
 
+    private fun emitSwitchTab(tabId: BottomNavItemId) {
+        val parentActivity = requireActivity()
+        if (parentActivity is GalleryActivity) {
+            parentActivity.onSwitchToTab(tabId)
+        } else {
+            // Fallback: launch as activity
+            when (tabId) {
+                BottomNavItemId.PHOTOS -> {
+                    startActivity(
+                        Intent(requireContext(), GalleryActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        }
+                    )
+                }
+
+                BottomNavItemId.ALBUMS -> {
+                    startActivity(
+                        Intent(requireContext(), AlbumsActivity::class.java)
+                            .setAction(requireActivity().intent.action)
+                            .putExtras(requireActivity().intent.extras ?: Bundle())
+                            .putExtras(
+                                AlbumsActivity.getBundle(
+                                    albumType = Album.TypeName.FOLDER,
+                                    defaultSearchConfig = SearchConfig.DEFAULT,
+                                )
+                            )
+                    )
+                }
+
+                BottomNavItemId.FAVORITES -> {
+                    startActivity(
+                        Intent(requireContext(), GallerySingleRepositoryActivity::class.java)
+                            .putExtras(requireActivity().intent.extras ?: Bundle())
+                            .putExtras(
+                                GallerySingleRepositoryActivity.getBundle(
+                                    title = getString(R.string.favorites),
+                                    repositoryParams = SimpleGalleryMediaRepository.Params(
+                                        searchConfig = SearchConfig.DEFAULT.copy(
+                                            onlyFavorite = true,
+                                        ),
+                                    ),
+                                )
+                            )
+                    )
+                }
+
+                else -> {}
+            }
+        }
+    }
 
     private fun showMoreSheet() {
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.more)
             .setItems(
                 arrayOf(
@@ -86,15 +162,15 @@ class LabelsActivity : BaseActivity() {
             ) { _, which ->
                 when (which) {
                     0 -> startActivity(
-                        Intent(this, ua.com.radiokot.photoprism.features.sync.view.SyncSettingsActivity::class.java)
+                        Intent(requireContext(), ua.com.radiokot.photoprism.features.sync.view.SyncSettingsActivity::class.java)
                     )
 
                     1 -> startActivity(
-                        Intent(this, ua.com.radiokot.photoprism.features.prefs.navcustomize.view.CustomizeNavActivity::class.java)
+                        Intent(requireContext(), ua.com.radiokot.photoprism.features.prefs.navcustomize.view.CustomizeNavActivity::class.java)
                     )
 
                     2 -> startActivity(
-                        Intent(this, ua.com.radiokot.photoprism.features.prefs.view.PreferencesActivity::class.java)
+                        Intent(requireContext(), ua.com.radiokot.photoprism.features.prefs.view.PreferencesActivity::class.java)
                     )
                 }
             }
@@ -104,12 +180,9 @@ class LabelsActivity : BaseActivity() {
     private fun initList() {
         val labelsAdapter = ItemAdapter<LabelListItem>()
 
-        viewModel.itemsList.observe(this, labelsAdapter::setNewList)
+        viewModel.itemsList.observe(viewLifecycleOwner, labelsAdapter::setNewList)
 
-        with(view.labelsRecyclerView) {
-            // Safe dimensions of the list keeping from division by 0.
-            // The fallback size is not supposed to be taken,
-            // as it means initializing of a not laid out list.
+        with(binding.labelsRecyclerView) {
             val listWidth = measuredWidth
                 .takeIf { it > 0 }
                 ?: FALLBACK_LIST_SIZE
@@ -138,15 +211,13 @@ class LabelsActivity : BaseActivity() {
                 }
             }
 
-            // Add the row spacing and make the items fill the column width
-            // by overriding the layout manager layout params factory.
             layoutManager = object : GridLayoutManager(context, spanCount) {
                 val rowSpacing: Int =
                     resources.getDimensionPixelSize(R.dimen.list_item_collection_margin_end)
 
                 override fun generateLayoutParams(
-                    c: Context,
-                    attrs: AttributeSet
+                    c: android.content.Context,
+                    attrs: android.util.AttributeSet
                 ): RecyclerView.LayoutParams {
                     return super.generateLayoutParams(c, attrs).apply {
                         width = RecyclerView.LayoutParams.MATCH_PARENT
@@ -174,13 +245,13 @@ class LabelsActivity : BaseActivity() {
     }
 
     private fun initErrorView() {
-        view.errorView.replaces(view.labelsRecyclerView)
-        viewModel.mainError.observe(this) { mainError ->
+        binding.errorView.replaces(binding.labelsRecyclerView)
+        viewModel.mainError.observe(viewLifecycleOwner) { mainError ->
             when (mainError) {
                 LabelsViewModel.Error.LoadingFailed ->
-                    view.errorView.showError(
+                    binding.errorView.showError(
                         ErrorView.Error.General(
-                            context = view.errorView.context,
+                            context = binding.errorView.context,
                             messageRes = R.string.failed_to_load_labels,
                             retryButtonTextRes = R.string.try_again,
                             retryButtonClickListener = viewModel::onRetryClicked
@@ -188,25 +259,25 @@ class LabelsActivity : BaseActivity() {
                     )
 
                 LabelsViewModel.Error.NothingFound ->
-                    view.errorView.showError(
+                    binding.errorView.showError(
                         ErrorView.Error.EmptyView(
-                            context = view.errorView.context,
+                            context = binding.errorView.context,
                             messageRes = R.string.no_labels_found,
                         )
                     )
 
                 null ->
-                    view.errorView.hide()
+                    binding.errorView.hide()
             }
         }
     }
 
-    private fun initSwipeRefresh() = with(view.swipeRefreshLayout) {
+    private fun initSwipeRefresh() = with(binding.swipeRefreshLayout) {
         setOnRefreshListener(viewModel::onSwipeRefreshPulled)
-        viewModel.isLoading.observe(this@LabelsActivity, ::setRefreshing)
+        viewModel.isLoading.observe(viewLifecycleOwner, ::setRefreshing)
     }
 
-    private fun subscribeToEvents() = viewModel.events.subscribe(this) { event ->
+    private fun subscribeToEvents() = viewModel.events.subscribe(viewLifecycleOwner) { event ->
         log.debug {
             "subscribeToEvents(): received_new_event:" +
                     "\nevent=$event"
@@ -217,7 +288,7 @@ class LabelsActivity : BaseActivity() {
                 showFloatingLoadingFailedError()
 
             is LabelsViewModel.Event.Finish ->
-                finish()
+                requireActivity().finish()
 
             is LabelsViewModel.Event.OpenLabel ->
                 openLabel(
@@ -225,16 +296,11 @@ class LabelsActivity : BaseActivity() {
                     repositoryParams = event.repositoryParams,
                 )
         }
-
-        log.debug {
-            "subscribeToEvents(): handled_new_event:" +
-                    "\nevent=$event"
-        }
     }
 
     private fun showFloatingLoadingFailedError() {
         Snackbar.make(
-            view.swipeRefreshLayout,
+            binding.swipeRefreshLayout,
             R.string.failed_to_load_labels,
             Snackbar.LENGTH_SHORT
         )
@@ -246,9 +312,9 @@ class LabelsActivity : BaseActivity() {
         name: String,
         repositoryParams: SimpleGalleryMediaRepository.Params,
     ) = labelLauncher.launch(
-        Intent(this, GallerySingleRepositoryActivity::class.java)
-            .setAction(intent.action)
-            .putExtras(intent.extras ?: Bundle())
+        Intent(requireContext(), GallerySingleRepositoryActivity::class.java)
+            .setAction(requireActivity().intent.action)
+            .putExtras(requireActivity().intent.extras ?: Bundle())
             .putExtras(
                 GallerySingleRepositoryActivity.getBundle(
                     title = name,
@@ -257,19 +323,19 @@ class LabelsActivity : BaseActivity() {
             )
     )
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.labels, menu)
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.labels, menu)
 
         // Set up the search.
-        with(menu?.findItem(R.id.search_view)?.actionView as SearchView) {
+        with(menu.findItem(R.id.search_view)?.actionView as SearchView) {
             queryHint = getString(R.string.enter_the_query)
-            fixCloseButtonColor()
-            hideUnderline()
-            bindToViewModel(viewModel, this@LabelsActivity)
+            fixCloseButtonColor(this)
+            hideUnderline(this)
+            bindToViewModel(this, requireActivity())
         }
 
         with(menu.findItem(R.id.show_all)) {
-            viewModel.isShowingAllLabels.observe(this@LabelsActivity) { isShowingAllLabels ->
+            viewModel.isShowingAllLabels.observe(viewLifecycleOwner) { isShowingAllLabels ->
                 if (isShowingAllLabels) {
                     setTitle(R.string.show_only_important_labels)
                     setIcon(R.drawable.ic_eye_off)
@@ -285,21 +351,39 @@ class LabelsActivity : BaseActivity() {
             }
         }
 
-        return super.onCreateOptionsMenu(menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onViewStateRestored(savedInstanceState: Bundle?) {
+        super.onViewStateRestored(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
+
+    private fun fixCloseButtonColor(searchView: SearchView) {
+        searchView.fixCloseButtonColor()
+    }
+
+    private fun hideUnderline(searchView: SearchView) {
+        searchView.hideUnderline()
+    }
+
+    private fun bindToViewModel(searchView: SearchView, activity: android.app.Activity) {
+        searchView.bindToViewModel(
+            viewModel = viewModel,
+            lifecycleOwner = viewLifecycleOwner,
+        )
     }
 
     companion object {
         private const val FALLBACK_LIST_SIZE = 100
-        private const val DEFAULT_SEARCH_CONFIG_EXTRA = "default_search_config"
+        private const val DEFAULT_SEARCH_CONFIG_ARG = "default_search_config"
 
-        /**
-         * @param defaultSearchConfig [SearchConfig] to be used as a base for opening a label.
-         * It could, for example, include limited media types.
-         */
-        fun getBundle(
+        fun newInstance(
             defaultSearchConfig: SearchConfig,
-        ) = Bundle().apply {
-            putParcelable(DEFAULT_SEARCH_CONFIG_EXTRA, defaultSearchConfig)
+        ): LabelsFragment = LabelsFragment().apply {
+            arguments = Bundle().apply {
+                putParcelable(DEFAULT_SEARCH_CONFIG_ARG, defaultSearchConfig)
+            }
         }
     }
 }

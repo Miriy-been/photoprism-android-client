@@ -54,7 +54,7 @@
             android:id="@+id/connect_button"
             style="@style/Widget.Material3.Button"
             android:layout_width="match_parent"
-            android:layout_height="64dp"
+            android:layout_height="@dimen/default_navigation_bar_height"
             android:layout_gravity="center_horizontal"
             android:text="@string/connect"
             app:layout_constraintBottom_toBottomOf="parent"

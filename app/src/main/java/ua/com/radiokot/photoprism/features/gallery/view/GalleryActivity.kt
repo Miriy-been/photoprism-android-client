@@ -45,13 +45,14 @@ import ua.com.radiokot.photoprism.extension.autoDispose
 import ua.com.radiokot.photoprism.extension.ensureItemIsVisible
 import ua.com.radiokot.photoprism.extension.kLogger
 import ua.com.radiokot.photoprism.extension.observeOnMain
-import ua.com.radiokot.photoprism.extension.proxyOkResult
 import ua.com.radiokot.photoprism.extension.setBetter
 import ua.com.radiokot.photoprism.extension.showOverflowItemIcons
 import ua.com.radiokot.photoprism.extension.subscribe
+import androidx.fragment.app.Fragment
 import ua.com.radiokot.photoprism.features.albums.data.model.Album
-import ua.com.radiokot.photoprism.features.albums.view.AlbumsActivity
+import ua.com.radiokot.photoprism.features.albums.view.AlbumsFragment
 import ua.com.radiokot.photoprism.features.albums.view.DestinationAlbumSelectionActivity
+import ua.com.radiokot.photoprism.features.gallery.data.storage.BottomNavItemId
 import ua.com.radiokot.photoprism.features.ext.memories.view.GalleryMemoriesListView
 import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
 import ua.com.radiokot.photoprism.features.gallery.data.model.SendableFile
@@ -74,9 +75,11 @@ import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryListViewMod
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryLoadingFooterListItem
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryMediaDownloadActionsViewModel
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryMediaRemoteActionsViewModel
+import ua.com.radiokot.photoprism.features.gallery.view.GallerySingleRepositoryFragment
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryViewModel
-import ua.com.radiokot.photoprism.features.labels.view.LabelsActivity
-import ua.com.radiokot.photoprism.features.map.view.MapActivity
+import ua.com.radiokot.photoprism.features.labels.view.LabelsFragment
+import ua.com.radiokot.photoprism.features.sync.view.SyncSettingsActivity
+import ua.com.radiokot.photoprism.features.map.view.MapFragment
 import ua.com.radiokot.photoprism.features.prefs.view.PreferencesActivity
 import ua.com.radiokot.photoprism.features.upload.view.UploadFilesActivity
 import ua.com.radiokot.photoprism.features.viewer.view.MediaViewerActivity
@@ -168,10 +171,6 @@ class GalleryActivity : BaseActivity() {
         ActivityResultContracts.StartActivityForResult(),
         this::onWebViewerRedirectHandlingResult,
     )
-    private val proxyOkResultLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-        this::proxyOkResult,
-    )
     private val addDestinationAlbumSelectionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
         this::onAddingDestinationAlbumSelectionResult,
@@ -219,7 +218,7 @@ class GalleryActivity : BaseActivity() {
         }
 
         rootView = ActivityGalleryBinding.inflate(layoutInflater)
-        view = IncludeActivityGalleryContentBinding.bind(rootView.contentLayout)
+        view = IncludeActivityGalleryContentBinding.bind(rootView.nativeContent!!)
         setContentView(rootView.root)
 
         subscribeToData()
@@ -427,31 +426,12 @@ class GalleryActivity : BaseActivity() {
                     showFloatingError(event.error)
                 }
 
+                is GalleryViewModel.Event.SwitchToTab -> {
+                    switchToTab(event)
+                }
+
                 is GalleryViewModel.Event.OpenPreferences -> {
                     openPreferences()
-                }
-
-                is GalleryViewModel.Event.OpenAlbums -> {
-                    openAlbums(
-                        albumType = event.albumType,
-                        defaultSearchConfig = event.defaultSearchConfig,
-                    )
-                }
-
-                is GalleryViewModel.Event.OpenFavorites -> {
-                    openFavorites(
-                        repositoryParams = event.repositoryParams,
-                    )
-                }
-
-                is GalleryViewModel.Event.OpenLabels -> {
-                    openLabels(
-                        defaultSearchConfig = event.defaultSearchConfig,
-                    )
-                }
-
-                is GalleryViewModel.Event.OpenMap -> {
-                    openMap()
                 }
 
                 is GalleryViewModel.Event.GoToEnvConnection -> {
@@ -468,6 +448,10 @@ class GalleryActivity : BaseActivity() {
 
                 GalleryViewModel.Event.OpenUpload -> {
                     openUpload()
+                }
+
+                is GalleryViewModel.Event.OpenSync -> {
+                    openSync()
                 }
             }
 
@@ -981,60 +965,121 @@ class GalleryActivity : BaseActivity() {
         startActivity(Intent(this, PreferencesActivity::class.java))
     }
 
-    private fun openMap() {
-        startActivity(Intent(this, MapActivity::class.java))
+    /**
+     * Called by child fragments (e.g. AlbumsFragment) to trigger tab switching
+     * without going through the ViewModel event loop.
+     */
+    fun onSwitchToTab(tabId: BottomNavItemId) {
+        val defaultSearchConfig = SearchConfig.DEFAULT
+
+        switchToTab(
+            GalleryViewModel.Event.SwitchToTab(
+                tabId = tabId,
+                defaultSearchConfig = defaultSearchConfig,
+                albumType = when (tabId) {
+                    BottomNavItemId.ALBUMS -> Album.TypeName.ALBUM
+                    BottomNavItemId.FOLDERS -> Album.TypeName.FOLDER
+                    BottomNavItemId.CALENDAR -> Album.TypeName.MONTH
+                    else -> null
+                },
+                repositoryParams = if (tabId == BottomNavItemId.FAVORITES) {
+                    SimpleGalleryMediaRepository.Params(
+                        searchConfig = defaultSearchConfig.copy(
+                            onlyFavorite = true,
+                        ),
+                    )
+                } else null,
+            )
+        )
+    }
+
+    private fun switchToTab(event: GalleryViewModel.Event.SwitchToTab) {
+        when (event.tabId) {
+            BottomNavItemId.PHOTOS -> {
+                // Show native content (photos grid), hide fragment container
+                rootView.nativeContent?.visibility = View.VISIBLE
+                rootView.fragmentContainer?.visibility = View.GONE
+                // Remove any current fragment
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, Fragment())
+                    .commitAllowingStateLoss()
+                supportFragmentManager.executePendingTransactions()
+            }
+
+            else -> {
+                // Hide native content, show fragment container
+                rootView.nativeContent?.visibility = View.GONE
+                rootView.fragmentContainer?.visibility = View.VISIBLE
+
+                val fragment = createTabFragment(event)
+                if (fragment != null) {
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, fragment, event.tabId.name)
+                        .commitAllowingStateLoss()
+                }
+            }
+        }
+
+        // Try to select the bottom nav item if it exists in the current menu
+        try {
+            navigationView.suppressProgrammaticSelection = true
+            rootView.bottomNavigation?.selectedItemId = event.tabId.menuResId
+        } catch (_: Exception) {
+            // Item may not be in the current menu
+        }
+    }
+
+    private fun createTabFragment(event: GalleryViewModel.Event.SwitchToTab): Fragment? {
+        return when (event.tabId) {
+            BottomNavItemId.ALBUMS,
+            BottomNavItemId.FOLDERS,
+            BottomNavItemId.CALENDAR -> {
+                val albumType = event.albumType
+                    ?: when (event.tabId) {
+                        BottomNavItemId.FOLDERS -> Album.TypeName.FOLDER
+                        BottomNavItemId.CALENDAR -> Album.TypeName.MONTH
+                        else -> Album.TypeName.ALBUM
+                    }
+                AlbumsFragment.newInstance(
+                    albumType = albumType,
+                    defaultSearchConfig = event.defaultSearchConfig
+                        ?: SearchConfig.DEFAULT,
+                )
+            }
+
+            BottomNavItemId.FAVORITES -> {
+                GallerySingleRepositoryFragment.newInstance(
+                    title = getString(R.string.favorites),
+                    repositoryParams = event.repositoryParams
+                        ?: SimpleGalleryMediaRepository.Params(
+                            searchConfig = SearchConfig.DEFAULT.copy(
+                                onlyFavorite = true,
+                            ),
+                        ),
+                )
+            }
+
+            BottomNavItemId.LABELS -> {
+                LabelsFragment.newInstance(
+                    defaultSearchConfig = event.defaultSearchConfig
+                        ?: SearchConfig.DEFAULT,
+                )
+            }
+
+            BottomNavItemId.PLACES -> {
+                MapFragment.newInstance()
+            }
+
+            else -> null // PHOTOS or non-tab items
+        }
     }
 
     private fun openUpload() {
         startActivity(Intent(this, UploadFilesActivity::class.java))
     }
 
-    private fun openAlbums(
-        albumType: Album.TypeName,
-        defaultSearchConfig: SearchConfig,
-    ) {
-        proxyOkResultLauncher.launch(
-            Intent(this, AlbumsActivity::class.java)
-                .putExtras(intent.extras ?: Bundle())
-                .putExtras(
-                    AlbumsActivity.getBundle(
-                        albumType = albumType,
-                        defaultSearchConfig = defaultSearchConfig,
-                    )
-                )
-                .setAction(intent.action)
-        )
-    }
-
-    private fun openFavorites(
-        repositoryParams: SimpleGalleryMediaRepository.Params,
-    ) {
-        proxyOkResultLauncher.launch(
-            Intent(this, GallerySingleRepositoryActivity::class.java)
-                .putExtras(intent.extras ?: Bundle())
-                .putExtras(
-                    GallerySingleRepositoryActivity.getBundle(
-                        title = getString(R.string.favorites),
-                        repositoryParams = repositoryParams,
-                    )
-                )
-                .setAction(intent.action)
-        )
-    }
-
-    private fun openLabels(
-        defaultSearchConfig: SearchConfig,
-    ) {
-        proxyOkResultLauncher.launch(
-            Intent(this, LabelsActivity::class.java)
-                .putExtras(intent.extras ?: Bundle())
-                .putExtras(
-                    LabelsActivity.getBundle(
-                        defaultSearchConfig = defaultSearchConfig,
-                    )
-                )
-                .setAction(intent.action)
-        )
+    private fun openSync() {
+        startActivity(Intent(this, SyncSettingsActivity::class.java))
     }
 
     private fun resetScroll() {
