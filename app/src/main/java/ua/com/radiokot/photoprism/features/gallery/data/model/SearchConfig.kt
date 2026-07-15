@@ -37,6 +37,7 @@ data class SearchConfig(
     val userQuery: String,
     val includePrivate: Boolean,
     val onlyFavorite: Boolean,
+    val archived: Boolean = false,
 ) : Parcelable {
     /**
      * @return copy of the config which doesn't go beyond the set of [allowedMediaTypes],
@@ -139,6 +140,10 @@ data class SearchConfig(
             }
         }
 
+        if (archived) {
+            queryBuilder.append(" archived:true")
+        }
+
         return queryBuilder
             .toString()
             .trim()
@@ -155,6 +160,7 @@ data class SearchConfig(
             userQuery = "",
             includePrivate = false,
             onlyFavorite = false,
+            archived = false,
         )
 
         private const val DAY_MS = 86400000L
