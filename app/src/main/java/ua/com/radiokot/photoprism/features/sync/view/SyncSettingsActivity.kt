@@ -34,6 +34,11 @@ class SyncSettingsActivity : BaseActivity() {
     private val viewModel: SyncSettingsViewModel by viewModel()
     private val disposables = CompositeDisposable()
     private var pendingOpenFolderPicker = false
+    /**
+     * Tracks whether "Sync now" was clicked before permissions were granted,
+     * so we can auto-trigger sync after the user grants permissions.
+     */
+    private var pendingSyncNow = false
 
     private val permissionsRequestLauncher: ActivityResultLauncher<Array<String>> =
         registerForActivityResult(
@@ -46,6 +51,13 @@ class SyncSettingsActivity : BaseActivity() {
                     openFolderPickerInternal()
                 }
                 viewModel.loadData()
+                // Auto-add the default camera folder if no folders configured
+                viewModel.autoAddDefaultFolderIfNeeded()
+                // Trigger pending sync if user clicked "Sync now" before granting permissions
+                if (pendingSyncNow) {
+                    pendingSyncNow = false
+                    viewModel.onSyncNowClicked()
+                }
             } else {
                 pendingOpenFolderPicker = false
                 Snackbar.make(
@@ -102,10 +114,25 @@ class SyncSettingsActivity : BaseActivity() {
 
         binding.btnSyncNow.setOnClickListener {
             if (!checkPermissionsMedia()) {
+                pendingSyncNow = true
                 permissionsRequestLauncher.launch(permissionsToRequest())
                 return@setOnClickListener
             }
             viewModel.onSyncNowClicked()
+        }
+
+        // Long press on "Sync now" to trigger full re-sync
+        binding.btnSyncNow.setOnLongClickListener {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.sync_resync_all_title)
+                .setMessage(R.string.sync_resync_all_message)
+                .setPositiveButton(R.string.sync_resync_all_confirm) { _, _ ->
+                    viewModel.resyncAll()
+                    viewModel.onSyncNowClicked()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+            true
         }
 
         // Navigate to full sync history page
@@ -150,14 +177,19 @@ class SyncSettingsActivity : BaseActivity() {
 
     private fun updateSyncButtonState() {
         val syncing = viewModel.isSyncing.value ?: false
+        val processing = viewModel.isProcessing.value ?: false
+        val (synced, total) = viewModel.syncProgress.value ?: Pair(0, 0)
 
-        if (syncing) {
-            // Bug 9: Show "Stop sync" instead of disabled "Syncing..."
+        if (processing) {
+            binding.btnSyncNow.isEnabled = true
+            binding.btnSyncNow.text = getString(R.string.sync_processing)
+        } else if (syncing && total > 0) {
+            binding.btnSyncNow.isEnabled = true
+            binding.btnSyncNow.text = getString(R.string.sync_progress_format, synced, total)
+        } else if (syncing) {
             binding.btnSyncNow.isEnabled = true
             binding.btnSyncNow.text = getString(R.string.sync_stop)
         } else {
-            // Always enable the sync button — the Worker handles album
-            // re-creation on the server even when there are 0 pending files.
             binding.btnSyncNow.isEnabled = true
             binding.btnSyncNow.text = getString(R.string.sync_now)
         }
@@ -318,6 +350,25 @@ class SyncSettingsActivity : BaseActivity() {
                     updateSyncButtonState()
                 },
 
+            viewModel.isProcessing
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { processing ->
+                    updateSyncButtonState()
+                },
+
+            viewModel.syncProgress
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { progress ->
+                    updateSyncButtonState()
+                },
+
+            viewModel.isLoading
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { loading ->
+                    binding.progressFolderLoading.visibility =
+                        if (loading) View.VISIBLE else View.GONE
+                },
+
             viewModel.lastFullSyncAt
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe { timestamp ->
@@ -441,7 +492,7 @@ class SyncSettingsActivity : BaseActivity() {
 
             if (folder.pendingCount > 0) {
                 tvBadge.visibility = View.VISIBLE
-                tvBadge.text = "${folder.pendingCount} new"
+                tvBadge.text = resources.getQuantityString(R.plurals.sync_pending_badge, folder.pendingCount, folder.pendingCount)
             } else {
                 tvBadge.visibility = View.GONE
             }

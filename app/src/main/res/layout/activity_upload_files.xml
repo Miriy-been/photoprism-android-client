@@ -1,231 +1,224 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:background="@color/wabi_bg_base"
+    android:orientation="vertical">
 
-    <com.google.android.material.appbar.AppBarLayout
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:elevation="0dp">
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/wabi_bg_base"
+        app:title="@string/upload_files_title"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:titleTextColor="@color/wabi_text_primary" />
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:title="@string/upload_files_title"
-            app:navigationIcon="@drawable/ic_arrow_back" />
-
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <LinearLayout
+    <!-- 空状态 -->
+    <FrameLayout
+        android:id="@+id/empty_state"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
 
-        <!-- 空状态 -->
-        <FrameLayout
-            android:id="@+id/empty_state"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="48dp">
 
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:alpha="0.5"
+                android:src="@drawable/ic_image"
+                app:tint="?colorOnSurfaceVariant" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/upload_empty_title"
+                android:textAlignment="center"
+                android:textAppearance="@style/TextAppearance.Wabi.Title3" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/upload_empty_hint"
+                android:textAlignment="center"
+                android:textAppearance="@style/TextAppearance.Wabi.Body"
+                android:textColor="@color/wabi_text_secondary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pick_images_button"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/select_images" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- 内容区域 -->
+    <ScrollView
+        android:id="@+id/content_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- 已选图片网格 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:padding="48dp">
-
-                <androidx.appcompat.widget.AppCompatImageView
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:alpha="0.5"
-                    android:src="@drawable/ic_image"
-                    app:tint="?colorOnSurfaceVariant" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
-                    android:text="@string/upload_empty_title"
-                    android:textAlignment="center"
-                    android:textAppearance="@style/TextAppearance.Wabi.Title3" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/upload_empty_hint"
-                    android:textAlignment="center"
+                    android:layout_weight="1"
+                    android:text="@string/selected_photos"
                     android:textAppearance="@style/TextAppearance.Wabi.Body"
-                    android:textColor="@color/wabi_text_secondary" />
+                    android:textStyle="bold" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/pick_images_button"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                <TextView
+                    android:id="@+id/selected_count"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
-                    android:text="@string/select_images" />
-
+                    android:textAppearance="@style/TextAppearance.Wabi.Caption1"
+                    tools:text="5 张" />
             </LinearLayout>
 
-        </FrameLayout>
-
-        <!-- 内容区域 -->
-        <ScrollView
-            android:id="@+id/content_scroll"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fillViewport="true"
-            android:visibility="gone">
-
-            <LinearLayout
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/images_grid"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="16dp"
+                android:nestedScrollingEnabled="false" />
 
-                <!-- 已选图片网格 -->
+            <!-- 添加更多按钮 -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/add_more_button"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/add_more_images"
+                app:icon="@drawable/ic_plus_circle" />
+
+            <!-- 上传信息卡片 -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                app:cardBackgroundColor="@color/wabi_bg_card"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/wabi_divider"
+                app:strokeWidth="1dp">
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <TextView
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/selected_photos"
+                        android:text="@string/upload_info_title"
                         android:textAppearance="@style/TextAppearance.Wabi.Body"
                         android:textStyle="bold" />
 
-                    <TextView
-                        android:id="@+id/selected_count"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textAppearance="@style/TextAppearance.Wabi.Caption1"
-                        tools:text="5 张" />
-                </LinearLayout>
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/images_grid"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="16dp"
-                    android:nestedScrollingEnabled="false" />
-
-                <!-- 添加更多按钮 -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/add_more_button"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/add_more_images"
-                    app:icon="@drawable/ic_plus_circle" />
-
-                <!-- 上传信息卡片 -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
-                    app:cardBackgroundColor="@color/wabi_bg_card"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp"
-                    app:strokeColor="@color/wabi_divider"
-                    app:strokeWidth="1dp">
-
                     <LinearLayout
+                        android:id="@+id/summary_items_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical" />
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/upload_info_title"
-                            android:textAppearance="@style/TextAppearance.Wabi.Body"
-                            android:textStyle="bold" />
+                </LinearLayout>
 
-                        <LinearLayout
-                            android:id="@+id/summary_items_layout"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:orientation="vertical" />
+            </com.google.android.material.card.MaterialCardView>
 
-                    </LinearLayout>
-
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- 目标相册选择 -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/albums_button"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:gravity="start|center_vertical"
-                    android:text="@string/select_albums"
-                    android:textAlignment="textStart"
-                    app:icon="@drawable/ic_album_16"
-                    app:iconGravity="textStart"
-                    app:iconPadding="8dp" />
-
-                <!-- 底部留白，确保按钮不遮挡 -->
-                <Space
-                    android:layout_width="match_parent"
-                    android:layout_height="80dp" />
+            <!-- 目标相册选择 -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/albums_button"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="start|center_vertical"
+                android:text="@string/select_albums"
+                android:textAlignment="textStart"
+                app:icon="@drawable/ic_album_16"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp" />
 
             </LinearLayout>
 
-        </ScrollView>
-
-    </LinearLayout>
+    </ScrollView>
 
     <!-- 底部操作栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
         android:background="@color/wabi_bg_card"
-        android:orientation="horizontal"
-        android:padding="12dp">
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:paddingBottom="24dp">
 
-        <!-- 侘寂：底部操作栏仅用 0.5dp 分割线替代阴影 -->
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:layout_marginTop="-12dp"
+            android:layout_marginBottom="12dp"
             android:background="@color/wabi_divider" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/cancel_button"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="0dp"
-            android:layout_height="56dp"
-            android:layout_marginEnd="12dp"
-            android:layout_weight="1"
-            android:text="@string/cancel" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/upload_button"
-            style="@style/Widget.Material3.Button"
-            android:layout_width="0dp"
-            android:layout_height="56dp"
-            android:layout_weight="2"
-            android:enabled="false"
-            android:text="@string/upload"
-            app:icon="@drawable/ic_upload_white" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/cancel_button"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:text="@string/cancel"
+                app:cornerRadius="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/upload_button"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:enabled="false"
+                android:text="@string/upload"
+                app:icon="@drawable/ic_upload_white"
+                app:cornerRadius="12dp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</LinearLayout>

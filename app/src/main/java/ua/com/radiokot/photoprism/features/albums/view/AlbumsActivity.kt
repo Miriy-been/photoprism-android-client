@@ -5,12 +5,15 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.AttributeSet
 import android.view.Menu
+import android.view.View
+import android.widget.EditText
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnPreDraw
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.adapters.ItemAdapter
@@ -66,6 +69,13 @@ class AlbumsActivity : BaseActivity() {
         }
         initErrorView()
         initSwipeRefresh()
+
+        // 初始化创建相册按钮
+        view.createAlbumButton.visibility =
+            if (viewModel.albumType == Album.TypeName.ALBUM) View.VISIBLE else View.GONE
+        view.createAlbumButton.setOnClickListener {
+            showCreateAlbumDialog()
+        }
 
         subscribeToEvents()
 
@@ -258,6 +268,9 @@ class AlbumsActivity : BaseActivity() {
             AlbumsViewModel.Event.ShowFloatingLoadingFailedError ->
                 showFloatingLoadingFailedError()
 
+            is AlbumsViewModel.Event.ShowFloatingMessage ->
+                Snackbar.make(view.swipeRefreshLayout, event.message, Snackbar.LENGTH_SHORT).show()
+
             is AlbumsViewModel.Event.Finish ->
                 finish()
 
@@ -334,6 +347,25 @@ class AlbumsActivity : BaseActivity() {
         if (!fragment.isAdded || !fragment.showsDialog) {
             fragment.showNow(supportFragmentManager, AlbumSortDialogFragment.TAG)
         }
+    }
+
+    private fun showCreateAlbumDialog() {
+        val inputEditText = EditText(this).apply {
+            hint = getString(R.string.enter_album_name)
+            requestFocus()
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.create_album)
+            .setView(inputEditText)
+            .setPositiveButton(R.string.create_album) { _, _ ->
+                val albumName = inputEditText.text.toString()
+                if (albumName.isNotBlank()) {
+                    viewModel.createAlbum(albumName)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

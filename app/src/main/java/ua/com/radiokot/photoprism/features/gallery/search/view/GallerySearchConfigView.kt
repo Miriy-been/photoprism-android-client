@@ -24,6 +24,11 @@ class GallerySearchConfigView(
         viewModel = viewModel,
         lifecycleOwner = this,
     )
+    private val historyView = GallerySearchConfigHistoryView(
+        view = view.historyView,
+        viewModel = viewModel,
+        lifecycleOwner = this,
+    )
     private val peopleView = GallerySearchConfigPeopleView(
         view = view.peopleView,
         viewModel = viewModel.peopleViewModel,
@@ -41,6 +46,11 @@ class GallerySearchConfigView(
         viewModel = viewModel,
         lifecycleOwner = this,
     )
+    private val suggestionsView = GallerySearchSuggestionsView(
+        view = view.suggestionsView,
+        viewModel = viewModel,
+        lifecycleOwner = this,
+    )
 
     private var isInitialized = false
     fun initOnce() {
@@ -49,9 +59,11 @@ class GallerySearchConfigView(
         }
 
         bookmarksView.initOnce()
+        historyView.initOnce()
         peopleView.initOnce()
         albumsView.initOnce()
         mediaTypesView.initOnce()
+        suggestionsView.initOnce()
 
         subscribeToData()
 

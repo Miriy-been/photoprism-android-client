@@ -253,6 +253,29 @@ class AlbumsViewModel(
         sortPreferenceSubject.onNext(newSort)
     }
 
+    fun createAlbum(title: String) {
+        log.debug {
+            "createAlbum(): creating_album:" +
+                    "\ntitle=$title"
+        }
+
+        albumsRepository
+            .create(title)
+            .subscribeOn(io.reactivex.rxjava3.schedulers.Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                {
+                    log.debug { "createAlbum(): created" }
+                    eventsSubject.onNext(Event.ShowFloatingMessage("Album created"))
+                },
+                { error ->
+                    log.error(error) { "createAlbum(): failed" }
+                    eventsSubject.onNext(Event.ShowFloatingLoadingFailedError)
+                }
+            )
+            .autoDispose(this)
+    }
+
     private fun onBackPressed() {
         log.debug {
             "onBackPressed(): handling_back_press"
@@ -279,6 +302,13 @@ class AlbumsViewModel(
          * Retry is possible: the [onRetryClicked] method should be called.
          */
         object ShowFloatingLoadingFailedError : Event
+
+        /**
+         * Show a dismissible floating message.
+         */
+        class ShowFloatingMessage(
+            val message: String,
+        ) : Event
 
         object Finish : Event
 

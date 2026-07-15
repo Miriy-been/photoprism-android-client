@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.chip.ChipGroup xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/active_filters_chip_group"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="6dp"
+    android:visibility="gone"
+    app:chipSpacingHorizontal="8dp"
+    app:chipSpacingVertical="4dp"
+    app:singleLine="false"
+    tools:visibility="visible"
+    tools:targetApi="o"></com.google.android.material.chip.ChipGroup>

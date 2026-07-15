@@ -53,6 +53,8 @@
     <color name="wabi_text_primary">@color/md_theme_light_onBackground</color>
     <color name="wabi_text_secondary">@color/md_theme_light_onSurfaceVariant</color>
     <color name="wabi_error">@color/md_theme_light_error</color>
+    <color name="wabi_chip_background">@color/md_theme_light_surfaceVariant</color>
+    <color name="wabi_chip_stroke">@color/md_theme_light_outline</color>
 
     <!-- ============================================================
          保留 — 仅用于全屏媒体查看器（功能性暗色背景）

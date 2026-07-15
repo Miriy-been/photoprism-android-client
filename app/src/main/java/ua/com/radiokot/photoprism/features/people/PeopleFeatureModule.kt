@@ -7,6 +7,7 @@ import ua.com.radiokot.photoprism.env.data.model.EnvSession
 import ua.com.radiokot.photoprism.features.gallery.search.logic.SearchPredicates
 import ua.com.radiokot.photoprism.features.people.data.model.Person
 import ua.com.radiokot.photoprism.features.people.data.storage.PeopleRepository
+import ua.com.radiokot.photoprism.features.people.view.model.PeopleListViewModel
 import ua.com.radiokot.photoprism.features.people.view.model.PeopleSelectionViewModel
 
 val peopleFeatureModule = module {
@@ -27,6 +28,14 @@ val peopleFeatureModule = module {
                     SearchPredicates.generalCondition(query, person.name)
                 },
                 previewUrlFactory = get(),
+            )
+        }
+
+        viewModel {
+            PeopleListViewModel(
+                peopleRepository = get(),
+                photoPrismSubjectsService = get(),
+                mediaPreviewUrlFactory = get(),
             )
         }
     }

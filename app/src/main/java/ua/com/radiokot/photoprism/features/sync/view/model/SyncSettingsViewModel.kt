@@ -17,6 +17,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import kotlinx.coroutines.runBlocking
 import ua.com.radiokot.photoprism.extension.kLogger
+import ua.com.radiokot.photoprism.base.util.ConnectivityChecker
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncFolder
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncHistoryItemDao
@@ -55,6 +56,7 @@ class SyncSettingsViewModel(
     private val syncPreferences: SyncPreferencesOnPrefs,
     private val scheduleSyncUseCase: ScheduleSyncUseCase,
     private val workManager: WorkManager,
+    private val connectivityChecker: ConnectivityChecker,
 ) : ViewModel() {
 
     val folders = BehaviorSubject.createDefault<List<FolderItem>>(emptyList())
@@ -65,6 +67,10 @@ class SyncSettingsViewModel(
     val syncIntervalMin = syncPreferences.syncIntervalMin
     val isLoading = BehaviorSubject.createDefault(false)
     val isSyncing = BehaviorSubject.createDefault(false)
+    /** Current sync progress: (syncedCount, totalFiles), (0,0) when not syncing. */
+    val syncProgress = BehaviorSubject.createDefault(Pair(0, 0))
+    /** True when the server is indexing uploaded files (ProcessingUpload phase). */
+    val isProcessing = BehaviorSubject.createDefault(false)
     val errorEvent = BehaviorSubject.create<String>()
     val syncHistory = BehaviorSubject.createDefault<List<SyncHistoryDisplay>>(emptyList())
     /** Emits a non-null value when user needs to confirm syncing on metered data. */
@@ -79,7 +85,36 @@ class SyncSettingsViewModel(
     private val log = kLogger("SyncSettingsVM")
     private val disposables = CompositeDisposable()
     private var autoRefreshDisposable: Disposable? = null
+    private var loadDataDisposable: Disposable? = null
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    private val syncWorkObserver = androidx.lifecycle.Observer<List<WorkInfo>> { workInfos ->
+        val runningWork = workInfos.firstOrNull {
+            it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
+        }
+
+        if (runningWork?.state == WorkInfo.State.RUNNING) {
+            val syncedCount = runningWork.progress.getInt("synced_count", 0)
+            val totalFiles = runningWork.progress.getInt("total_files", 0)
+            val uploadPercent = runningWork.progress.getDouble("upload_percent", -1.0)
+
+            val processing = uploadPercent == -2.0
+            isProcessing.onNext(processing)
+
+            if (!processing && totalFiles > 0) {
+                syncProgress.onNext(Pair(syncedCount, totalFiles))
+            }
+            isSyncing.onNext(true)
+        } else {
+            syncProgress.onNext(Pair(0, 0))
+            isSyncing.onNext(false)
+            isProcessing.onNext(false)
+        }
+
+        if (runningWork == null) {
+            loadData()
+            loadSyncHistory()
+        }
+    }
 
     init {
         loadData()
@@ -106,22 +141,12 @@ class SyncSettingsViewModel(
 
     private fun observeSyncWorkerStatus() {
         workManager.getWorkInfosByTagLiveData(SyncWorker.TAG)
-            .observeForever { workInfos ->
-                val isRunning = workInfos.any {
-                    it.state == WorkInfo.State.RUNNING ||
-                    it.state == WorkInfo.State.ENQUEUED
-                }
-                isSyncing.onNext(isRunning)
-
-                if (!isRunning) {
-                    loadData()
-                    loadSyncHistory()
-                }
-            }
+            .observeForever(syncWorkObserver)
     }
 
     fun loadData() {
-        Single.fromCallable {
+        loadDataDisposable?.dispose()
+        loadDataDisposable = Single.fromCallable {
             val enabledFolders = runBlocking {
                 syncFolderDao.getEnabledFolders()
             }
@@ -137,7 +162,6 @@ class SyncSettingsViewModel(
                     pendingCount = pendingCount,
                 )
             }
-            // Bug 4 fix: count only files in enabled folders, not globally
             val enabledBucketIds = enabledFolders.map { it.bucketId }
             val synced = if (enabledBucketIds.isNotEmpty()) {
                 runBlocking { syncedFileDao.getCountByBucketIds(enabledBucketIds) }
@@ -160,7 +184,6 @@ class SyncSettingsViewModel(
                 log.error(error) { "loadData(): failed" }
                 errorEvent.onNext(error.message ?: "Load failed")
             })
-            .addTo(disposables)
     }
 
     fun addSelectedFolder(bucketId: String, displayName: String, relativePath: String) {
@@ -233,6 +256,97 @@ class SyncSettingsViewModel(
         loadData()
     }
 
+    /**
+     * Resets the sync state for all enabled folders, so all local files
+     * will be treated as "new" and re-uploaded on the next sync.
+     * PhotoPrism's server-side SHA-1 dedup prevents actual duplicates.
+     */
+    fun resyncAll() {
+        Single.fromCallable {
+            runBlocking {
+                val enabledFolders = syncFolderDao.getEnabledFolders()
+                if (enabledFolders.isNotEmpty()) {
+                    syncedFileDao.deleteByBucketIds(enabledFolders.map { it.bucketId })
+                    log.info { "resyncAll(): cleared ${enabledFolders.size} folders' sync state" }
+                    true
+                } else {
+                    log.info { "resyncAll(): no enabled folders to reset" }
+                    false
+                }
+            }
+        }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ cleared ->
+                if (cleared) {
+                    loadData()
+                }
+            }, { error ->
+                log.error(error) { "resyncAll(): failed" }
+                errorEvent.onNext(error.message ?: "Failed to reset sync state")
+            })
+            .addTo(disposables)
+    }
+
+    /**
+     * Automatically adds the default camera folder if no sync folders exist.
+     * Called after the user grants MediaStore permissions for the first time.
+     * Queries MediaStore for the "Camera" folder (usually DCIM/Camera).
+     */
+    fun autoAddDefaultFolderIfNeeded() {
+        Single.fromCallable {
+            runBlocking {
+                // Only auto-add if no folders are configured
+                if (syncFolderDao.countEnabled() > 0) {
+                    log.debug { "autoAddDefaultFolderIfNeeded(): folders_exist, skipping" }
+                    return@runBlocking false
+                }
+            }
+
+            val cameraFolder = scanLocalFoldersUseCase.findDefaultCameraFolder()
+            if (cameraFolder != null) {
+                val (bucketId, displayName, relativePath) = cameraFolder
+                // Use a distinguishable prefix for auto-detected folders
+                val autoBucketId = "auto:$bucketId"
+
+                runBlocking {
+                    val existing = syncFolderDao.getByBucketId(autoBucketId)
+                    if (existing == null) {
+                        syncFolderDao.upsert(
+                            SyncFolder(
+                                bucketId = autoBucketId,
+                                displayName = displayName,
+                                relativePath = relativePath,
+                                isEnabled = true,
+                                lastSyncAt = null,
+                            )
+                        )
+                        log.info {
+                            "autoAddDefaultFolderIfNeeded(): added " +
+                                    "displayName=$displayName, relativePath=$relativePath"
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                }
+            } else {
+                log.warn { "autoAddDefaultFolderIfNeeded(): no_default_folder_found" }
+                false
+            }
+        }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ added ->
+                if (added) {
+                    loadData()
+                }
+            }, { error ->
+                log.error(error) { "autoAddDefaultFolderIfNeeded(): failed" }
+            })
+            .addTo(disposables)
+    }
+
     fun onSyncNowClicked() {
         if (isSyncing.value == true) {
             // Bug 9: If syncing, clicking means "Stop/Pause sync"
@@ -245,9 +359,10 @@ class SyncSettingsViewModel(
         // Allow sync even when pending is 0 — the Worker will still
         // ensure albums exist on the server (album re-creation fix).
 
-        // If wifiOnly is on, warn the user before syncing on metered data
+        // If wifiOnly is on, check if we're actually on an unmetered network
         val wifiOnly = syncPreferences.wifiOnly.value ?: true
-        if (wifiOnly) {
+        if (wifiOnly && !connectivityChecker.isOnUnmeteredNetwork()) {
+            // Only show warning when on metered (mobile data) network
             showMeteredDataWarningEvent.onNext(true)
             return
         }
@@ -269,34 +384,47 @@ class SyncSettingsViewModel(
     }
 
     private fun doEnqueueSync() {
-        isSyncing.onNext(true)
-
         val d = Single.fromCallable {
             runBlocking {
                 val enabledFolders = syncFolderDao.getEnabledFolders()
-                if (enabledFolders.isNotEmpty()) {
-                    syncPreferences.setLastFullSyncAt(System.currentTimeMillis())
-
-                    // Manual sync always uses CONNECTED (user explicitly asked to sync).
-                    // wifiOnly only applies to automatic periodic syncs (ScheduleSyncUseCase).
-                    val constraints = Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                    val request = OneTimeWorkRequestBuilder<SyncWorker>()
-                        .setConstraints(constraints)
-                        .addTag(SyncWorker.TAG)
-                        .build()
-
-                    workManager.enqueueUniqueWork(
-                        SyncWorker.TAG,
-                        ExistingWorkPolicy.REPLACE,
-                        request,
-                    )
+                if (enabledFolders.isEmpty()) {
+                    log.warn { "doEnqueueSync(): no_enabled_folders" }
+                    return@runBlocking false
                 }
+
+                syncPreferences.setLastFullSyncAt(System.currentTimeMillis())
+
+                // Manual sync always uses CONNECTED (user explicitly asked to sync).
+                // wifiOnly only applies to automatic periodic syncs (ScheduleSyncUseCase).
+                val constraints = Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+                val request = OneTimeWorkRequestBuilder<SyncWorker>()
+                    .setConstraints(constraints)
+                    .addTag(SyncWorker.TAG)
+                    .build()
+
+                workManager.enqueueUniqueWork(
+                    SyncWorker.TAG,
+                    ExistingWorkPolicy.REPLACE,
+                    request,
+                )
+                log.info { "doEnqueueSync(): sync_work_enqueued" }
+                true
             }
         }
             .subscribeOn(Schedulers.io())
-            .subscribe()
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ enqueued ->
+                log.debug { "doEnqueueSync(): completed" }
+                if (enqueued) {
+                    isSyncing.onNext(true)
+                }
+                errorEvent.onNext("") // clear any previous error
+            }, { error ->
+                log.error(error) { "doEnqueueSync(): failed" }
+                errorEvent.onNext(error.message ?: "Failed to start sync")
+            })
         disposables.add(d)
     }
 
@@ -361,6 +489,9 @@ class SyncSettingsViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        loadDataDisposable?.dispose()
+        workManager.getWorkInfosByTagLiveData(SyncWorker.TAG)
+            .removeObserver(syncWorkObserver)
         disposables.clear()
     }
 }

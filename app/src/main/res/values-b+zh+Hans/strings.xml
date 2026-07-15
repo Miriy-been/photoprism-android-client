@@ -357,6 +357,10 @@
     <string name="sync_notification_resume">继续同步</string>
     <string name="sync_paused_title">同步已暂停</string>
     <string name="sync_stop">暂停同步</string>
+    <string name="sync_progress_format">%1$d/%2$d</string>
+    <plurals name="sync_pending_badge">
+        <item quantity="other">%d 个待同步</item>
+    </plurals>
     <string name="sync_interval_title">自动同步间隔</string>
     <string name="sync_interval_manual">仅手动</string>
     <string name="sync_interval_30min">每 30 分钟</string>

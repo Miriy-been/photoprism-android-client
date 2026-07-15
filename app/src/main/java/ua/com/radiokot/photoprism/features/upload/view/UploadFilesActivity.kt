@@ -18,6 +18,7 @@ import androidx.annotation.StringRes
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.GridLayoutManager
+import com.google.android.material.snackbar.Snackbar
 
 
 
@@ -71,9 +72,7 @@ class UploadFilesActivity : BaseActivity() {
         subscribeToData()
         subscribeToEvents()
 
-        if (savedInstanceState == null) {
-            openImagePicker()
-        }
+        // 用户手动点击"选择图片"按钮来选择照片
     }
 
     private fun initToolbar() {
@@ -135,27 +134,34 @@ class UploadFilesActivity : BaseActivity() {
                 )
             }
 
-            view.uploadButton.isEnabled = hasImages
+            updateUploadButtonState()
         }
 
         viewModel.summary.observe(this, ::showSummary)
 
-        viewModel.isUploadButtonEnabled.observe(this) { enabled ->
-            // Only enable if we also have images
-            val hasImages = (viewModel.selectedImages.value?.size ?: 0) > 0
-            view.uploadButton.isEnabled = enabled && hasImages
+        viewModel.isUploadButtonEnabled.observe(this) {
+            updateUploadButtonState()
         }
+    }
+
+    private fun updateUploadButtonState() {
+        val hasImages = (viewModel.selectedImages.value?.size ?: 0) > 0
+        val isViewModelEnabled = viewModel.isUploadButtonEnabled.value ?: true
+        view.uploadButton.isEnabled = hasImages && isViewModelEnabled
     }
 
     private fun subscribeToEvents() = viewModel.events.subscribeBy { event ->
         log.debug { "subscribeToEvents(): received_new_event:$event" }
 
         when (event) {
-            UploadFilesViewModel.Event.Finish -> finish()
+            UploadFilesViewModel.Event.Finish -> {
+                // 延迟关闭，让用户看到反馈
+                Snackbar.make(view.root, R.string.upload_started_message, Snackbar.LENGTH_SHORT).show()
+                view.root.postDelayed({ finish() }, 1200)
+            }
 
             UploadFilesViewModel.Event.ShowStartedInBackgroundMessage ->
-                Toast.makeText(this, R.string.upload_started_message, Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(this, R.string.upload_started_message, Toast.LENGTH_SHORT).show()
 
             is UploadFilesViewModel.Event.RequestPermissions ->
                 permissionsRequestLauncher.launch(event.permissions)
@@ -173,16 +179,13 @@ class UploadFilesActivity : BaseActivity() {
     }
 
     private fun openImagePicker() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-            type = "*/*"
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            type = "image/*"
             putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             putExtra(Intent.EXTRA_LOCAL_ONLY, true)
             addCategory(Intent.CATEGORY_OPENABLE)
         }
-
-        imageSelectionLauncher.launch(
-            Intent.createChooser(intent, getString(R.string.select_images))
-        )
+        imageSelectionLauncher.launch(intent)
     }
 
     private fun onImageSelectionResult(result: ActivityResult) {

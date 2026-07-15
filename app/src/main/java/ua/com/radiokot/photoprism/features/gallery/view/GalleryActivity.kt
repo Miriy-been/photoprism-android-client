@@ -59,6 +59,7 @@ import ua.com.radiokot.photoprism.features.gallery.data.model.SendableFile
 import ua.com.radiokot.photoprism.features.gallery.data.storage.GalleryNavPreferences
 import ua.com.radiokot.photoprism.features.gallery.data.storage.SimpleGalleryMediaRepository
 import ua.com.radiokot.photoprism.features.gallery.logic.FileReturnIntentCreator
+import ua.com.radiokot.photoprism.features.gallery.search.view.GallerySearchActiveFiltersView
 import ua.com.radiokot.photoprism.features.gallery.search.view.GallerySearchBarView
 import ua.com.radiokot.photoprism.features.gallery.search.view.GallerySearchView
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryContentLoadingError
@@ -78,6 +79,7 @@ import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryMediaRemote
 import ua.com.radiokot.photoprism.features.gallery.view.GallerySingleRepositoryFragment
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryViewModel
 import ua.com.radiokot.photoprism.features.labels.view.LabelsFragment
+import ua.com.radiokot.photoprism.features.people.view.PeopleListFragment
 import ua.com.radiokot.photoprism.features.sync.view.SyncSettingsActivity
 import ua.com.radiokot.photoprism.features.map.view.MapFragment
 import ua.com.radiokot.photoprism.features.prefs.view.PreferencesActivity
@@ -761,6 +763,12 @@ class GalleryActivity : BaseActivity() {
             searchBar = view.searchBar,
         )
         searchBarView.setFocusDownView(view.swipeRefreshLayout)
+
+        GallerySearchActiveFiltersView(
+            view = view.activeFilters,
+            viewModel = viewModel.searchViewModel,
+            lifecycleOwner = this,
+        )
     }
 
     private fun initNavigation() = with(navigationView) {
@@ -1066,6 +1074,13 @@ class GalleryActivity : BaseActivity() {
                 )
             }
 
+            BottomNavItemId.PEOPLE -> {
+                PeopleListFragment.newInstance(
+                    defaultSearchConfig = event.defaultSearchConfig
+                        ?: SearchConfig.DEFAULT,
+                )
+            }
+
             BottomNavItemId.PLACES -> {
                 MapFragment.newInstance()
             }
@@ -1232,10 +1247,22 @@ class GalleryActivity : BaseActivity() {
                 .subscribeOn(Schedulers.io())
                 .subscribe { hasPending ->
                     if (hasPending) {
+                        val wifiOnly = syncPreferences.wifiOnly.value ?: true
+                        val constraints = androidx.work.Constraints.Builder()
+                            .setRequiredNetworkType(
+                                if (wifiOnly) {
+                                    androidx.work.NetworkType.UNMETERED
+                                } else {
+                                    androidx.work.NetworkType.CONNECTED
+                                }
+                            )
+                            .build()
+
                         workManager.enqueueUniqueWork(
                             SyncWorker.TAG,
                             ExistingWorkPolicy.KEEP,
                             OneTimeWorkRequestBuilder<SyncWorker>()
+                                .setConstraints(constraints)
                                 .addTag(SyncWorker.TAG)
                                 .build()
                         )

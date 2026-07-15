@@ -199,6 +199,7 @@ dependencies {
     implementation 'com.github.chrisbanes:PhotoView:2.3.0'
 
     implementation "androidx.room:room-runtime:$room_version"
+    implementation "androidx.room:room-rxjava3:$room_version"
     ksp "androidx.room:room-compiler:$room_version"
 
     implementation 'androidx.browser:browser:1.9.0'
@@ -293,5 +294,36 @@ project.afterEvaluate {
                 throw new IllegalStateException("Only 'releasePlay' type builds can be published to Google Play")
             }
         }
+    }
+}
+
+// Fix Android Studio icon XML files where the <?xml?> declaration is not on line 1.
+// This is a workaround for Android Studio's Image Asset Studio bug that places
+// license comments before the XML declaration.
+task fixIconXmls {
+    doLast {
+        def resDir = file("src/main/res")
+        fileTree(resDir).include("**/*.xml").each { xmlFile ->
+            def content = xmlFile.text
+            // Check if <?xml is on line 1 (not preceded by any non-whitespace content)
+            if (!content.startsWith("<?xml")) {
+                def pattern = '(?is)<\\?xml\\s+version="1\\.0"\\s+encoding="utf-8"\\s*\\?>'
+                def matcher = content =~ pattern
+                if (matcher.find()) {
+                    def xmlDecl = matcher.group(0)
+                    def fixed = content.replaceFirst(pattern, "")
+                    // Remove leading whitespace/newlines before the actual content
+                    fixed = fixed.replaceAll(/^\s*\n/, "")
+                    xmlFile.text = "${xmlDecl}\n${fixed}"
+                    println "Fixed: ${xmlFile.name}"
+                }
+            }
+        }
+    }
+}
+
+tasks.whenTaskAdded { task ->
+    if (task.name.startsWith("merge") && task.name.endsWith("Resources")) {
+        task.dependsOn fixIconXmls
     }
 }

@@ -84,21 +84,21 @@ class CustomizeNavActivity : BaseActivity() {
         itemTouchHelper.attachToRecyclerView(binding.recyclerView)
     }
 
-    override fun onBackPressed() {
+    override fun finish() {
         saveConfig()
-        super.onBackPressed()
+        super.finish()
     }
 
     private fun saveConfig() {
-        val bottomConfig = items
-            .filter { it in visibleItems }
+        val bottomConfig = buildList {
+            // PHOTOS 始终在第一位
+            add(BottomNavItemId.PHOTOS)
+            // 加上其他已选中的项（排除 PHOTOS，避免重复）
+            addAll(items.filter { it in visibleItems && it != BottomNavItemId.PHOTOS })
+        }
             .take(BottomNavItemId.MAX_VISIBLE_ITEMS)
 
-        if (bottomConfig.isEmpty()) {
-            navPreferences.bottomNavItems.onNext(listOf(BottomNavItemId.PHOTOS))
-        } else {
-            navPreferences.bottomNavItems.onNext(bottomConfig)
-        }
+        navPreferences.bottomNavItems.onNext(bottomConfig)
     }
 
     // --- Adapter ---
@@ -142,7 +142,11 @@ class CustomizeNavActivity : BaseActivity() {
                                 visibleItems.add(item)
                             }
                         } else {
-                            visibleItems.remove(item)
+                            if (item !in BottomNavItemId.LOCKED_ITEMS) {
+                                visibleItems.remove(item)
+                            } else {
+                                isChecked = true
+                            }
                         }
                     }
                 }

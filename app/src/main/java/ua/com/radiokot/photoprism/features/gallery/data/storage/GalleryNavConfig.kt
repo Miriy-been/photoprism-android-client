@@ -44,6 +44,11 @@ enum class BottomNavItemId(
         iconRes = ua.com.radiokot.photoprism.R.drawable.ic_label,
         labelRes = ua.com.radiokot.photoprism.R.string.labels,
     ),
+    PEOPLE(
+        menuResId = ua.com.radiokot.photoprism.R.id.people,
+        iconRes = ua.com.radiokot.photoprism.R.drawable.ic_people,
+        labelRes = ua.com.radiokot.photoprism.R.string.people,
+    ),
     FOLDERS(
         menuResId = ua.com.radiokot.photoprism.R.id.folders,
         iconRes = ua.com.radiokot.photoprism.R.drawable.ic_folder,

@@ -105,6 +105,18 @@
         <item name="itemBackground">@drawable/bottom_nav_item_bg</item>
     </style>
 
+    <!-- 侘寂 Chip 滤镜样式 — 搜索快速过滤 -->
+    <style name="Widget.Wabi.Chip.Filter" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/wabi_chip_background</item>
+        <item name="android:textColor">@color/wabi_text_primary</item>
+        <item name="chipStrokeColor">@color/wabi_chip_stroke</item>
+        <item name="chipStrokeWidth">0.5dp</item>
+        <item name="closeIconTint">@color/wabi_text_secondary</item>
+        <item name="chipEndPadding">12dp</item>
+        <item name="chipStartPadding">12dp</item>
+        <item name="textStartPadding">0dp</item>
+    </style>
+
     <!-- ============================================================
          保留的原有样式
          ============================================================ -->

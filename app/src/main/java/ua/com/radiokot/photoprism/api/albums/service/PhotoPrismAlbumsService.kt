@@ -1,14 +1,17 @@
 package ua.com.radiokot.photoprism.api.albums.service
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.Headers
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 import ua.com.radiokot.photoprism.api.albums.model.PhotoPrismAlbum
 import ua.com.radiokot.photoprism.api.albums.model.PhotoPrismAlbumCreation
+import ua.com.radiokot.photoprism.api.albums.model.PhotoPrismAlbumUpdate
 import ua.com.radiokot.photoprism.api.photos.model.PhotoPrismBatchPhotoUids
 import java.io.IOException
 
@@ -59,5 +62,23 @@ interface PhotoPrismAlbumsService {
         albumUid: String,
         @Body
         batchPhotoUids: PhotoPrismBatchPhotoUids,
+    ): Any
+
+    @kotlin.jvm.Throws(IOException::class)
+    @Headers("Accept: application/json")
+    @PUT("v1/albums/{albumUid}")
+    fun updateAlbum(
+        @Path("albumUid")
+        albumUid: String,
+        @Body
+        album: PhotoPrismAlbumUpdate,
+    ): PhotoPrismAlbum
+
+    @kotlin.jvm.Throws(IOException::class)
+    @Headers("Accept: application/json")
+    @DELETE("v1/albums/{albumUid}")
+    fun deleteAlbum(
+        @Path("albumUid")
+        albumUid: String,
     ): Any
 }

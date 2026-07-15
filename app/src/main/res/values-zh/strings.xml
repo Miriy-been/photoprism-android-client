@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="save">保存</string>
+    <string name="edit_album_name">编辑相册名称</string>
+    <string name="download_as_zip">下载为 ZIP</string>
+    <string name="delete_album">删除相册</string>
+    <string name="edit_album">编辑相册</string>
+    <string name="enter_album_name">输入相册名称</string>
+    <string name="album_name_updated">相册名称已更新</string>
+    <string name="failed_to_update_album">相册名称更新失败</string>
+    <string name="album_deleted">相册已删除</string>
+    <string name="failed_to_delete_album">删除相册失败</string>
+    <string name="delete_album_confirmation">删除相册？</string>
+    <string name="delete_album_confirmation_message">确定要删除\"%1$s\"吗？此操作无法撤销。</string>
+    <string name="create_album">创建相册</string>
+    <string name="album_created">相册已创建</string>
+    <string name="failed_to_download_album">下载相册失败</string>
+    <string name="album_downloaded">相册已下载</string>
+</resources>

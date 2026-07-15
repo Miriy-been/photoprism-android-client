@@ -5,6 +5,8 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.Menu
+import android.view.MenuItem
+import android.widget.EditText
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.registerForActivityResult
@@ -25,7 +27,9 @@ import com.mikepenz.fastadapter.diff.FastAdapterDiffUtil
 import com.mikepenz.fastadapter.listeners.addClickListener
 import com.mikepenz.fastadapter.listeners.addLongClickListener
 import com.mikepenz.fastadapter.scroll.EndlessRecyclerOnScrollListener
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.kotlin.subscribeBy
+import io.reactivex.rxjava3.schedulers.Schedulers
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.core.qualifier.named
@@ -33,6 +37,7 @@ import ua.com.radiokot.photoprism.R
 import ua.com.radiokot.photoprism.base.view.BaseActivity
 import ua.com.radiokot.photoprism.databinding.ActivityGallerySingleRepositoryBinding
 import ua.com.radiokot.photoprism.di.UTC_MONTH_YEAR_DATE_FORMAT
+import ua.com.radiokot.photoprism.env.data.model.EnvSession
 import ua.com.radiokot.photoprism.extension.autoDispose
 import ua.com.radiokot.photoprism.extension.capitalized
 import ua.com.radiokot.photoprism.extension.ensureItemIsVisible
@@ -41,6 +46,8 @@ import ua.com.radiokot.photoprism.extension.observeOnMain
 import ua.com.radiokot.photoprism.extension.setBetter
 import ua.com.radiokot.photoprism.extension.showOverflowItemIcons
 import ua.com.radiokot.photoprism.extension.subscribe
+import ua.com.radiokot.photoprism.features.albums.data.storage.AlbumsRepository
+import ua.com.radiokot.photoprism.features.albums.view.AlbumActionsBottomSheet
 import ua.com.radiokot.photoprism.features.albums.view.DestinationAlbumSelectionActivity
 import ua.com.radiokot.photoprism.features.gallery.data.model.SendableFile
 import ua.com.radiokot.photoprism.features.gallery.data.storage.SimpleGalleryMediaRepository
@@ -59,6 +66,8 @@ import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
 import ua.com.radiokot.photoprism.util.AsyncRecycledViewPoolInitializer
 import ua.com.radiokot.photoprism.util.LocalDate
 import ua.com.radiokot.photoprism.view.ErrorView
+import java.io.File
+import java.io.IOException
 import java.text.DateFormat
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -86,6 +95,10 @@ class GallerySingleRepositoryActivity : BaseActivity() {
         this::onAddingDestinationAlbumSelectionResult,
     )
     private val fileReturnIntentCreator: FileReturnIntentCreator by inject()
+    private val albumsRepositoryFactory: AlbumsRepository.Factory by inject()
+    private val session: EnvSession by inject()
+    private val isAlbumDetail: Boolean
+        get() = intent.getStringExtra(ALBUM_UID_EXTRA) != null
     private val downloadProgressView: DownloadProgressView by lazy {
         DownloadProgressView(
             viewModel = viewModel,
@@ -831,6 +844,14 @@ class GallerySingleRepositoryActivity : BaseActivity() {
             true
         }
 
+        menu?.findItem(R.id.album_actions)?.apply {
+            isVisible = isAlbumDetail
+            setOnMenuItemClickListener {
+                showAlbumActionsBottomSheet()
+                true
+            }
+        }
+
         return super.onCreateOptionsMenu(menu)
     }
 
@@ -845,6 +866,153 @@ class GallerySingleRepositoryActivity : BaseActivity() {
                     context = this@GallerySingleRepositoryActivity,
                 )
         }
+
+    private fun showAlbumActionsBottomSheet() {
+        val albumUid = intent.getStringExtra(ALBUM_UID_EXTRA) ?: return
+        val albumTitle = intent.getStringExtra(TITLE_EXTRA) ?: ""
+
+        val bottomSheet = AlbumActionsBottomSheet.newInstance()
+
+        bottomSheet.onEditNameClicked = {
+            showEditAlbumNameDialog(albumUid, albumTitle)
+        }
+
+        bottomSheet.onDownloadZipClicked = {
+            downloadAlbumZip(albumUid)
+        }
+
+        bottomSheet.onDeleteClicked = {
+            showDeleteAlbumConfirmation(albumUid, albumTitle)
+        }
+
+        bottomSheet.show(supportFragmentManager, AlbumActionsBottomSheet.TAG)
+    }
+
+    private fun showEditAlbumNameDialog(albumUid: String, currentName: String) {
+        val inputEditText = EditText(this).apply {
+            hint = getString(R.string.enter_album_name)
+            setText(currentName)
+            requestFocus()
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.edit_album)
+            .setView(inputEditText)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val newName = inputEditText.text.toString()
+                if (newName.isNotBlank()) {
+                    updateAlbumName(albumUid, newName)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun updateAlbumName(albumUid: String, newName: String) {
+        albumsRepositoryFactory.albums
+            .update(albumUid, newName)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                {
+                    setTitle(newName)
+                    Snackbar.make(
+                        view.galleryRecyclerView,
+                        R.string.album_name_updated,
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                },
+                { error ->
+                    log.error(error) { "updateAlbumName(): failed" }
+                    Snackbar.make(
+                        view.galleryRecyclerView,
+                        R.string.failed_to_update_album,
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+            )
+            .autoDispose(this)
+    }
+
+    private fun showDeleteAlbumConfirmation(albumUid: String, albumTitle: String) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.delete_album_confirmation)
+            .setMessage(getString(R.string.delete_album_confirmation_message, albumTitle))
+            .setPositiveButton(R.string.delete) { _, _ ->
+                deleteAlbum(albumUid)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun deleteAlbum(albumUid: String) {
+        albumsRepositoryFactory.albums
+            .delete(albumUid)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                {
+                    Snackbar.make(
+                        view.galleryRecyclerView,
+                        R.string.album_deleted,
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                    finish()
+                },
+                { error ->
+                    log.error(error) { "deleteAlbum(): failed" }
+                    Snackbar.make(
+                        view.galleryRecyclerView,
+                        R.string.failed_to_delete_album,
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+            )
+            .autoDispose(this)
+    }
+
+    private fun downloadAlbumZip(albumUid: String) {
+        val apiBaseUrl = session.envConnectionParams.apiUrl.toString()
+        val downloadUrl = "${apiBaseUrl}v1/albums/$albumUid/dl"
+
+        val request = okhttp3.Request.Builder()
+            .url(downloadUrl)
+            .header("X-Session-ID", session.id)
+            .build()
+
+        okhttp3.OkHttpClient()
+            .newCall(request)
+            .enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: IOException) {
+                    runOnUiThread {
+                        Snackbar.make(
+                            view.galleryRecyclerView,
+                            R.string.failed_to_download_album,
+                            Snackbar.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    response.body?.let { body ->
+                        val fileName = "album_${albumUid}_${System.currentTimeMillis()}.zip"
+                        val file = File(getExternalFilesDir(null), fileName)
+
+                        file.outputStream().use { output ->
+                            body.byteStream().copyTo(output)
+                        }
+
+                        runOnUiThread {
+                            Snackbar.make(
+                                view.galleryRecyclerView,
+                                R.string.album_downloaded,
+                                Snackbar.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+            })
+    }
 
     companion object {
         private const val FALLBACK_LIST_SIZE = 100

@@ -45,6 +45,7 @@ class GalleryNavigationView(
         R.id.places to { vm -> vm.onPlacesClicked() },
         R.id.calendar to { vm -> vm.onCalendarClicked() },
         R.id.labels to { vm -> vm.onLabelsClicked() },
+        R.id.people to { vm -> vm.onPeopleClicked() },
         R.id.folders to { vm -> vm.onFoldersClicked() },
         R.id.upload to { vm -> vm.onUploadClicked() },
         R.id.preferences to { vm -> vm.onPreferencesClicked() },
@@ -174,6 +175,9 @@ class GalleryNavigationView(
 
         navigationMenu.findItem(R.id.labels)
             .setOnMenuItemClickListener(getClickListener(viewModel::onLabelsClicked))
+
+        navigationMenu.findItem(R.id.people)
+            .setOnMenuItemClickListener(getClickListener(viewModel::onPeopleClicked))
 
         navigationMenu.findItem(R.id.folders)
             .setOnMenuItemClickListener(getClickListener(viewModel::onFoldersClicked))

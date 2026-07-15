@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import kotlinx.coroutines.runBlocking
 import ua.com.radiokot.photoprism.extension.kLogger
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncedFileDao
+import java.io.File
 
 data class LocalMediaItem(
     val mediaStoreId: Long?,
@@ -25,6 +26,22 @@ class ScanLocalFoldersUseCase(
 ) {
     private val contentResolver: ContentResolver = context.contentResolver
     private val log = kLogger("ScanLocalFoldersUC")
+
+    /**
+     * Refreshes the MediaStore cache to ensure queries return current data.
+     * On API 30+, this forces a re-scan of the filesystem.
+     * Should be called before counting or scanning operations.
+     */
+    private fun refreshMediaStore() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                contentResolver.refresh(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null)
+                contentResolver.refresh(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, null, null)
+            }
+        } catch (e: Exception) {
+            log.warn(e) { "refreshMediaStore(): failed" }
+        }
+    }
 
     companion object {
         private val IMAGES_PROJECTION = arrayOf(
@@ -152,6 +169,63 @@ class ScanLocalFoldersUseCase(
         return counts
     }
 
+    /**
+     * Finds the default camera/media folder (usually "DCIM/Camera").
+     * Queries MediaStore for the most common photo folder and returns
+     * (bucketId, displayName, relativePath) or null if no media found.
+     *
+     * The [displayName] is typically "Camera" and [relativePath] is "DCIM/Camera/".
+     */
+    fun findDefaultCameraFolder(): Triple<String, String, String>? {
+        refreshMediaStore()
+        val uris = listOf(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        )
+        val projection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(
+                MediaStore.Images.Media.BUCKET_ID,
+                MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
+                MediaStore.Images.Media.RELATIVE_PATH,
+            )
+        } else {
+            arrayOf(
+                MediaStore.Images.Media.BUCKET_ID,
+                MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
+                MediaStore.Images.Media.DATA,
+            )
+        }
+
+        // Try to find "Camera" folder first
+        val selection = "${MediaStore.Images.Media.BUCKET_DISPLAY_NAME} = ?"
+        val selectionArgs = arrayOf("Camera")
+
+        for (uri in uris) {
+            contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val bucketId = cursor.getString(0) ?: continue
+                    val displayName = cursor.getString(1) ?: "Camera"
+                    val relativePath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        cursor.getString(2) ?: "DCIM/Camera/"
+                    } else {
+                        val data = cursor.getString(2)
+                        if (data != null) {
+                            val rel = data.substringAfter("/0/").substringBeforeLast("/")
+                            "$rel/"
+                        } else {
+                            "DCIM/Camera/"
+                        }
+                    }
+                    log.info { "findDefaultCameraFolder(): found bucketId=$bucketId, relativePath=$relativePath" }
+                    return Triple(bucketId, displayName, relativePath)
+                }
+            }
+        }
+
+        log.warn { "findDefaultCameraFolder(): no Camera folder found via MediaStore" }
+        return null
+    }
+
     private fun queryMedia(
         uri: android.net.Uri,
         projection: Array<String>,
@@ -236,6 +310,7 @@ class ScanLocalFoldersUseCase(
      * Uses MediaStore RELATIVE_PATH matching with BUCKET_DISPLAY_NAME fallback.
      */
     fun countNewFilesByPath(relativePath: String, syncedFileDao: SyncedFileDao): Int {
+        refreshMediaStore()
         val mediaItems = mutableListOf<LocalMediaItem>()
 
         queryMediaByPath(
@@ -287,9 +362,27 @@ class ScanLocalFoldersUseCase(
             return 0
         }
 
+        // Filter out files that no longer exist on disk (deleted by user externally).
+        // This keeps the pending count accurate even if MediaStore hasn't been updated.
+        val existingItems = mediaItems.filter { item ->
+            try {
+                File(item.filePath).exists() ||
+                        contentResolver.openInputStream(Uri.parse(item.contentUri))?.use { true } == true
+            } catch (e: Exception) {
+                false
+            }
+        }
+        val removedCount = mediaItems.size - existingItems.size
+        if (removedCount > 0) {
+            log.info {
+                "countNewFilesByPath: filtered_out_$removedCount deleted files " +
+                        "for path='$relativePath'"
+            }
+        }
+
         return runBlocking {
             var count = 0
-            for (item in mediaItems) {
+            for (item in existingItems) {
                 val exists = if (item.mediaStoreId != null) {
                     syncedFileDao.countByMediaStoreId(item.mediaStoreId) > 0
                 } else {
@@ -299,7 +392,7 @@ class ScanLocalFoldersUseCase(
             }
             log.info {
                 "countNewFilesByPath: path='$relativePath', " +
-                        "mediaItems=${mediaItems.size}, new=$count"
+                        "mediaItems=${existingItems.size}, new=$count"
             }
             count
         }
@@ -311,6 +404,7 @@ class ScanLocalFoldersUseCase(
      * Falls back to BUCKET_DISPLAY_NAME if RELATIVE_PATH query returns 0.
      */
     fun scanByRelativePath(relativePath: String, syncedFileDao: SyncedFileDao): List<LocalMediaItem> {
+        refreshMediaStore()
         val allItems = mutableListOf<LocalMediaItem>()
 
         queryMediaByPath(
@@ -350,8 +444,27 @@ class ScanLocalFoldersUseCase(
             }
         }
 
+        // Filter out files that no longer exist on disk (deleted by user externally).
+        // This keeps the scan result consistent with countNewFilesByPath and prevents
+        // repeated upload failures for deleted files.
+        val existingItems = allItems.filter { item ->
+            try {
+                File(item.filePath).exists() ||
+                        contentResolver.openInputStream(Uri.parse(item.contentUri))?.use { true } == true
+            } catch (e: Exception) {
+                false
+            }
+        }
+        val removedCount = allItems.size - existingItems.size
+        if (removedCount > 0) {
+            log.info {
+                "scanByRelativePath: filtered_out $removedCount deleted files " +
+                        "for path='$relativePath'"
+            }
+        }
+
         return runBlocking {
-            allItems.filter { item ->
+            existingItems.filter { item ->
                 val exists = if (item.mediaStoreId != null) {
                     syncedFileDao.countByMediaStoreId(item.mediaStoreId) > 0
                 } else {

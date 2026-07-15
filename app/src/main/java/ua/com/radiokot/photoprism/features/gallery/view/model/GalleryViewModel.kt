@@ -606,6 +606,15 @@ class GalleryViewModel(
         )
     }
 
+    fun onPeopleClicked() {
+        eventsSubject.onNext(
+            Event.SwitchToTab(
+                tabId = BottomNavItemId.PEOPLE,
+                defaultSearchConfig = getStateDefaultSearchConfig(),
+            )
+        )
+    }
+
     fun onUploadClicked() {
         eventsSubject.onNext(Event.OpenUpload)
     }

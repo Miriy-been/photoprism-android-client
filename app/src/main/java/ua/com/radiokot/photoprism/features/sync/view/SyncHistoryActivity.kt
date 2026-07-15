@@ -130,17 +130,13 @@ class SyncHistoryActivity : BaseActivity() {
             }
             badgeTv.text = item.status
             badgeTv.visibility = android.view.View.VISIBLE
-            badgeTv.setBackgroundResource(
+            badgeTv.setTextColor(
                 if (item.failedCount > 0)
-                    android.R.color.transparent
+                    androidx.core.content.ContextCompat.getColor(this, ua.com.radiokot.photoprism.R.color.wabi_error)
                 else
-                    android.R.color.holo_green_light
+                    androidx.core.content.ContextCompat.getColor(this, ua.com.radiokot.photoprism.R.color.wabi_accent)
             )
-
-            // Allow clearing individual history items on long click
-            row.setOnClickListener {
-                // No-op for now
-            }
+            badgeTv.setBackgroundResource(android.R.color.transparent)
 
             container.addView(row)
         }

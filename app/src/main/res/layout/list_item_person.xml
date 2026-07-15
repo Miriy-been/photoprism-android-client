@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="@dimen/list_item_collection_width"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="@dimen/list_item_collection_margin_end"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="8dp">
+
+        <ImageView
+            android:id="@+id/person_avatar_image_view"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_gravity="center_horizontal"
+            android:background="?attr/colorSurface"
+            android:clipToOutline="true"
+            android:outlineProvider="background"
+            android:scaleType="centerCrop" />
+
+        <ImageView
+            android:id="@+id/person_favorite_image_view"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="4dp"
+            android:src="@drawable/ic_star_filled"
+            android:tint="@color/wabi_accent" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/person_name_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAlignment="center"
+        android:textAppearance="@style/TextAppearance.Wabi.Body"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/person_photo_count_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textAppearance="@style/TextAppearance.Wabi.Caption1"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+</LinearLayout>

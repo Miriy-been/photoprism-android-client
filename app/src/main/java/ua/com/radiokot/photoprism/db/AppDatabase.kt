@@ -12,6 +12,8 @@ import ua.com.radiokot.photoprism.features.labels.data.model.LabelCacheEntity
 import ua.com.radiokot.photoprism.features.people.data.model.PeopleCacheEntity
 import ua.com.radiokot.photoprism.features.people.data.storage.PeopleCacheDao
 import ua.com.radiokot.photoprism.features.labels.data.storage.LabelCacheDao
+import ua.com.radiokot.photoprism.features.recyclebin.data.storage.RecycleBinDao
+import ua.com.radiokot.photoprism.features.recyclebin.data.storage.RecycleBinItem
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncHistoryItem
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncedFile
 import ua.com.radiokot.photoprism.features.sync.data.model.SyncFolder
@@ -20,7 +22,7 @@ import ua.com.radiokot.photoprism.features.sync.data.storage.SyncedFileDao
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
 
 @Database(
-    version = 18,
+    version = 19,
     entities = [
         SearchBookmarksDbEntity::class,
         MemoryDbEntity::class,
@@ -31,6 +33,7 @@ import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
         AlbumCacheEntity::class,
         PeopleCacheEntity::class,
         LabelCacheEntity::class,
+        RecycleBinItem::class,
     ],
     autoMigrations = [
         AutoMigration(from = 4, to = 5),
@@ -55,4 +58,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun albumCache(): AlbumCacheDao
     abstract fun peopleCache(): PeopleCacheDao
     abstract fun labelCache(): LabelCacheDao
+    abstract fun recycleBin(): RecycleBinDao
 }

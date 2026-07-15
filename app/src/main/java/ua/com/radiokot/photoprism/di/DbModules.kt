@@ -11,6 +11,7 @@ import ua.com.radiokot.photoprism.db.CachedMediaDao
 import ua.com.radiokot.photoprism.db.roomMigration
 import ua.com.radiokot.photoprism.features.labels.data.storage.LabelCacheDao
 import ua.com.radiokot.photoprism.features.people.data.storage.PeopleCacheDao
+import ua.com.radiokot.photoprism.features.recyclebin.data.storage.RecycleBinDao
 
 val appDbModule = module {
     single {
@@ -100,6 +101,14 @@ val appDbModule = module {
                 roomMigration(from = 17, to = 18) {
                     execSQL("ALTER TABLE `cached_media` ADD COLUMN `albumUid` TEXT")
                 },
+                roomMigration(from = 18, to = 19) {
+                    execSQL("CREATE TABLE IF NOT EXISTS `recycle_bin_items` (" +
+                            "`photoUid` TEXT NOT NULL PRIMARY KEY, " +
+                            "`archivedAt` INTEGER NOT NULL, " +
+                            "`thumbnailHash` TEXT, " +
+                            "`photoTitle` TEXT" +
+                            ")")
+                },
                 roomMigration(from = 9, to = 10) {
                     execSQL("CREATE TABLE IF NOT EXISTS `cached_media` (" +
                             "`uid` TEXT NOT NULL PRIMARY KEY, " +
@@ -149,4 +158,8 @@ val appDbModule = module {
     single {
         get<AppDatabase>().labelCache()
     } bind LabelCacheDao::class
+
+    single {
+        get<AppDatabase>().recycleBin()
+    } bind RecycleBinDao::class
 }

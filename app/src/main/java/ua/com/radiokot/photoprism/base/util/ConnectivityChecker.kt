@@ -49,5 +49,14 @@ class ConnectivityChecker(context: Context) {
 
     fun isOnline(): Boolean = connectivitySubject.value ?: false
 
+    /**
+     * @return true if the current active network is unmetered (typically Wi-Fi).
+     */
+    fun isOnUnmeteredNetwork(): Boolean {
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+    }
+
     fun observeConnectivity(): Observable<Boolean> = connectivitySubject.hide()
 }

@@ -11,14 +11,20 @@ import ua.com.radiokot.photoprism.extension.autoDispose
 import ua.com.radiokot.photoprism.extension.checkNotNull
 import ua.com.radiokot.photoprism.extension.kLogger
 import ua.com.radiokot.photoprism.extension.observeOnMain
+import ua.com.radiokot.photoprism.features.albums.data.model.Album
+import ua.com.radiokot.photoprism.features.albums.data.storage.AlbumsRepository
 import ua.com.radiokot.photoprism.features.gallery.data.model.GalleryMedia
+import ua.com.radiokot.photoprism.features.people.data.storage.PeopleRepository
 import ua.com.radiokot.photoprism.features.gallery.data.model.SearchBookmark
 import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
 import ua.com.radiokot.photoprism.features.gallery.data.storage.SearchBookmarksRepository
 import ua.com.radiokot.photoprism.features.gallery.search.albums.view.model.GallerySearchAlbumsViewModel
+import ua.com.radiokot.photoprism.features.gallery.search.data.storage.SearchHistoryRepository
 import ua.com.radiokot.photoprism.features.gallery.search.data.storage.SearchPreferences
+import ua.com.radiokot.photoprism.features.gallery.search.logic.SearchPredicates
 import ua.com.radiokot.photoprism.features.gallery.search.logic.TvDetector
 import ua.com.radiokot.photoprism.features.gallery.search.people.view.model.GallerySearchPeopleViewModel
+import ua.com.radiokot.photoprism.features.labels.data.storage.LabelsRepository
 
 class GallerySearchViewModel(
     private val bookmarksRepository: SearchBookmarksRepository,
@@ -26,6 +32,10 @@ class GallerySearchViewModel(
     val peopleViewModel: GallerySearchPeopleViewModel,
     private val searchPreferences: SearchPreferences,
     private val tvDetector: TvDetector,
+    private val searchHistoryRepository: SearchHistoryRepository,
+    private val labelsRepositoryFactory: LabelsRepository.Factory,
+    private val albumsRepositoryFactory: AlbumsRepository.Factory,
+    private val peopleRepository: PeopleRepository,
 ) : ViewModel() {
     private val log = kLogger("GallerySearchVM")
 
@@ -51,6 +61,21 @@ class GallerySearchViewModel(
     val events: Observable<Event> = eventsSubject.observeOnMain()
     val isBookmarksSectionVisible = MutableLiveData(false)
     val bookmarks = MutableLiveData<List<SearchBookmarkItem>>()
+
+    val isHistorySectionVisible = MutableLiveData(false)
+    val searchHistory = MutableLiveData<List<SearchHistoryRepository.SearchHistoryEntry>>()
+
+    private val labelsRepository = labelsRepositoryFactory.get(isAllLabels = false)
+    private val albumsRepository = albumsRepositoryFactory.albums
+
+    val suggestions = MutableLiveData<List<SearchSuggestion>>()
+
+    /**
+     * The minimum query length to start showing suggestions.
+     */
+    private val suggestionMinQueryLength = 1
+
+    val activeFilters = MutableLiveData<List<ActiveFilter>>()
 
     // Current search configuration values.
     // Values are set to searchDefaults values in switchToConfiguring()
@@ -78,6 +103,12 @@ class GallerySearchViewModel(
         selectedPersonIds.observeForever(updateApplyButtonEnabled)
 
         subscribeToBookmarks()
+        loadHistory()
+
+        // Observe user query changes for suggestions
+        userQuery.observeForever { query ->
+            updateSuggestions(query)
+        }
 
         // External data is updated on config view opening as well.
         // ::switchToConfiguring.
@@ -318,6 +349,138 @@ class GallerySearchViewModel(
         }
 
         stateSubject.onNext(State.Applied(appliedSearch))
+
+        // Update active filters
+        updateActiveFilters(config)
+
+        // Save to search history
+        searchHistoryRepository.add(config)
+        loadHistory()
+    }
+
+    private fun updateActiveFilters(config: SearchConfig) {
+        val filters = mutableListOf<ActiveFilter>()
+
+        config.userQuery?.takeIf { it.isNotBlank() }?.let {
+            filters.add(ActiveFilter.Query(it))
+        }
+        if (config.onlyFavorite) {
+            filters.add(ActiveFilter.OnlyFavorite)
+        }
+        if (config.includePrivate) {
+            filters.add(ActiveFilter.IncludePrivate)
+        }
+        config.albumUid?.let { uid ->
+            val albumName = albumsRepository.itemsList
+                .firstOrNull { it.uid == uid }
+                ?.title
+            filters.add(ActiveFilter.Album(uid, albumName))
+        }
+        config.personIds?.takeIf { it.isNotEmpty() }?.let { ids ->
+            filters.add(ActiveFilter.People(ids.size))
+        }
+        config.mediaTypes?.takeIf { it.size < (availableMediaTypes.value?.size ?: 0) }?.let {
+            filters.add(ActiveFilter.MediaTypes(it.size))
+        }
+
+        activeFilters.value = filters
+    }
+
+    private fun loadHistory() {
+        val entries = searchHistoryRepository.getAll()
+        searchHistory.value = entries
+        isHistorySectionVisible.value = entries.isNotEmpty()
+    }
+
+    fun onHistoryItemClicked(entry: SearchHistoryRepository.SearchHistoryEntry) {
+        log.debug {
+            "onHistoryItemClicked(): applying_history_search:" +
+                    "\nentry=$entry"
+        }
+
+        applySearchConfig(entry.searchConfig)
+    }
+
+    fun onClearHistoryClicked() {
+        log.debug {
+            "onClearHistoryClicked(): clearing_history"
+        }
+
+        searchHistoryRepository.clear()
+        loadHistory()
+    }
+
+    fun onActiveFilterClicked(filter: ActiveFilter) {
+        log.debug {
+            "onActiveFilterClicked(): filter_clicked:" +
+                    "\nfilter=$filter"
+        }
+
+        val currentState = stateSubject.value
+        val config = (currentState as? State.Applied)?.search?.config ?: return
+
+        val newConfig = when (filter) {
+            is ActiveFilter.Query -> config.copy(userQuery = "")
+            is ActiveFilter.OnlyFavorite -> config.copy(onlyFavorite = false)
+            is ActiveFilter.IncludePrivate -> config.copy(includePrivate = false)
+            is ActiveFilter.Album -> config.copy(albumUid = null)
+            is ActiveFilter.People -> config.copy(personIds = emptySet())
+            is ActiveFilter.MediaTypes -> config.copy(mediaTypes = null)
+        }
+
+        applySearchConfig(newConfig)
+    }
+
+    fun onSuggestionClicked(suggestion: SearchSuggestion) {
+        log.debug {
+            "onSuggestionClicked(): suggestion_clicked:" +
+                    "\nsuggestion=$suggestion"
+        }
+
+        when (suggestion) {
+            is SearchSuggestion.AlbumSuggestion -> {
+                selectedAlbumUid.value = suggestion.album.uid
+            }
+            is SearchSuggestion.Label -> {
+                userQuery.value = suggestion.labelName
+                applyConfiguredSearch()
+            }
+            is SearchSuggestion.Person -> {
+                userQuery.value = suggestion.personName
+                applyConfiguredSearch()
+            }
+        }
+    }
+
+    private fun updateSuggestions(query: String?) {
+        val q = query?.trim() ?: ""
+        if (q.length < suggestionMinQueryLength) {
+            suggestions.value = emptyList()
+            return
+        }
+
+        val matchedLabels = labelsRepository.itemsList
+            .filter { SearchPredicates.generalCondition(q, it.name) }
+            .map { SearchSuggestion.Label(it.name) }
+
+        val matchedPeople = peopleRepository.itemsList
+            .filter { it.name != null && SearchPredicates.generalCondition(q, it.name!!) }
+            .map { SearchSuggestion.Person(it.name!!) }
+
+        val matchedAlbums = albumsRepository.itemsList
+            .filter { SearchPredicates.generalCondition(q, it.title) }
+            .take(10)
+            .map { SearchSuggestion.AlbumSuggestion(it.title, it) }
+
+        val allSuggestions = buildList {
+            // Show labels and people first (they're quick filters)
+            addAll(matchedLabels)
+            addAll(matchedPeople)
+            // Then show album suggestions
+            addAll(matchedAlbums)
+        }
+
+        suggestions.value = allSuggestions
     }
 
     fun onResetClicked() {
@@ -330,6 +493,7 @@ class GallerySearchViewModel(
         }
 
         stateSubject.onNext(State.NoSearch)
+        activeFilters.value = emptyList()
     }
 
     fun onConfigurationBackClicked() {
@@ -538,6 +702,24 @@ class GallerySearchViewModel(
         object NoSearch : State
         data class Configuring(val alreadyAppliedSearch: AppliedGallerySearch?) : State
         data class Applied(val search: AppliedGallerySearch) : State
+    }
+
+    sealed class SearchSuggestion {
+        data class Label(val labelName: String) : SearchSuggestion()
+        data class Person(val personName: String) : SearchSuggestion()
+        data class AlbumSuggestion(val albumName: String, val album: Album) : SearchSuggestion()
+    }
+
+    /**
+     * Active filter chip displayed below the search bar when a search is applied.
+     */
+    sealed class ActiveFilter(val label: String) {
+        class Query(query: String) : ActiveFilter(query)
+        object OnlyFavorite : ActiveFilter("Favorites")
+        object IncludePrivate : ActiveFilter("Private")
+        class Album(uid: String, albumName: String?) : ActiveFilter(albumName ?: uid)
+        class People(count: Int) : ActiveFilter("People ($count)")
+        class MediaTypes(count: Int) : ActiveFilter("Types ($count)")
     }
 
     sealed interface Event {

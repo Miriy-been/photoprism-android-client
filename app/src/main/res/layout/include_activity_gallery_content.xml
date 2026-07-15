@@ -87,6 +87,14 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- 快速过滤 Chip 栏 — 搜索应用后显示 -->
+    <include
+        android:id="@+id/active_filters"
+        layout="@layout/view_gallery_active_filters"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="52dp" />
+
     <!-- Invisible visibility is important for this FAB.
     Without it there is no initial show animation.
     It also must be placed before the SearchView -->

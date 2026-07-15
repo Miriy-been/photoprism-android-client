@@ -20,6 +20,7 @@ import ua.com.radiokot.photoprism.features.gallery.ImportSearchBookmarksUseCaseP
 import ua.com.radiokot.photoprism.features.gallery.data.storage.SearchBookmarksRepository
 import ua.com.radiokot.photoprism.features.gallery.search.albums.view.model.GallerySearchAlbumSelectionViewModel
 import ua.com.radiokot.photoprism.features.gallery.search.albums.view.model.GallerySearchAlbumsViewModel
+import ua.com.radiokot.photoprism.features.gallery.search.data.storage.SearchHistoryRepository
 import ua.com.radiokot.photoprism.features.gallery.search.data.storage.SearchPreferences
 import ua.com.radiokot.photoprism.features.gallery.search.data.storage.SearchPreferencesOnPrefs
 import ua.com.radiokot.photoprism.features.gallery.search.logic.ExportSearchBookmarksUseCase
@@ -29,6 +30,7 @@ import ua.com.radiokot.photoprism.features.gallery.search.logic.SearchBookmarksB
 import ua.com.radiokot.photoprism.features.gallery.search.logic.SearchPredicates
 import ua.com.radiokot.photoprism.features.gallery.search.people.view.model.GallerySearchPeopleViewModel
 import ua.com.radiokot.photoprism.features.gallery.search.view.model.SearchBookmarkDialogViewModel
+import ua.com.radiokot.photoprism.features.labels.labelsFeatureModule
 import ua.com.radiokot.photoprism.features.people.peopleFeatureModule
 
 val gallerySearchFeatureModules: List<Module> = listOf(
@@ -96,6 +98,11 @@ val gallerySearchFeatureModules: List<Module> = listOf(
         }
     },
 
+    // Labels.
+    module {
+        includes(labelsFeatureModule)
+    },
+
     // Preferences.
     module {
         includes(ioModules)
@@ -106,5 +113,12 @@ val gallerySearchFeatureModules: List<Module> = listOf(
                 keyPrefix = "search",
             )
         } bind SearchPreferences::class
+
+        single {
+            SearchHistoryRepository(
+                preferences = get(named(APP_NO_BACKUP_PREFERENCES)),
+                jsonObjectMapper = get(),
+            )
+        } bind SearchHistoryRepository::class
     },
 )

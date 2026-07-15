@@ -6,6 +6,7 @@ import io.reactivex.rxjava3.kotlin.toCompletable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.runBlocking
 import ua.com.radiokot.photoprism.api.albums.model.PhotoPrismAlbumCreation
+import ua.com.radiokot.photoprism.api.albums.model.PhotoPrismAlbumUpdate
 import ua.com.radiokot.photoprism.api.albums.service.PhotoPrismAlbumsService
 import ua.com.radiokot.photoprism.api.photos.model.PhotoPrismBatchPhotoUids
 import ua.com.radiokot.photoprism.base.data.model.DataPage
@@ -130,6 +131,35 @@ class AlbumsRepository(
                 broadcast()
             }
     }.toSingle().subscribeOn(Schedulers.io())
+
+    fun update(
+        albumUid: String,
+        title: String,
+    ): Single<Album> = {
+        photoPrismAlbumsService.updateAlbum(
+            albumUid = albumUid,
+            album = PhotoPrismAlbumUpdate(
+                title = title,
+            )
+        )
+            .let(::Album)
+            .also { updatedAlbum ->
+                val index = mutableItemsList.indexOfFirst { it.uid == albumUid }
+                if (index >= 0) {
+                    mutableItemsList[index] = updatedAlbum
+                }
+                broadcast()
+            }
+    }.toSingle().subscribeOn(Schedulers.io())
+
+    fun delete(
+        albumUid: String,
+    ): Completable = {
+        photoPrismAlbumsService.deleteAlbum(albumUid)
+
+        mutableItemsList.removeAll { it.uid == albumUid }
+        broadcast()
+    }.toCompletable().subscribeOn(Schedulers.io())
 
     fun addItemsToAlbum(
         albumUid: String,

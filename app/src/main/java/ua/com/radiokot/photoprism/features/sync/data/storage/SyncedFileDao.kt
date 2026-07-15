@@ -68,4 +68,12 @@ interface SyncedFileDao {
      */
     @Query("UPDATE synced_files SET photoPrismHash = :hash WHERE filePath IN (:filePaths) AND photoPrismHash IS NULL")
     suspend fun updatePhotoPrismHashByPaths(filePaths: List<String>, hash: String)
+
+    /**
+     * Deletes all synced file records for the given bucket IDs,
+     * resetting those folders' sync state. All local files will be
+     * treated as "new" and re-uploaded on the next sync.
+     */
+    @Query("DELETE FROM synced_files WHERE bucketId IN (:bucketIds)")
+    suspend fun deleteByBucketIds(bucketIds: List<String>)
 }

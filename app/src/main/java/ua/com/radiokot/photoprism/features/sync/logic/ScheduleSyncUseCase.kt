@@ -57,6 +57,7 @@ class ScheduleSyncUseCase(
         return PeriodicWorkRequestBuilder<SyncWorker>(intervalMin.toLong(), TimeUnit.MINUTES)
             .setConstraints(constraints)
             .addTag(SyncWorker.PERIODIC_TAG)
+            .addTag(SyncWorker.TAG)
             .build()
     }
 }

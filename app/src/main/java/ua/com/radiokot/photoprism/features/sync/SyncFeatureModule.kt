@@ -7,6 +7,7 @@ import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import ua.com.radiokot.photoprism.base.util.ConnectivityChecker
 import ua.com.radiokot.photoprism.db.AppDatabase
 import ua.com.radiokot.photoprism.di.APP_NO_BACKUP_PREFERENCES
 import ua.com.radiokot.photoprism.features.sync.data.storage.SyncFolderDao
@@ -72,6 +73,7 @@ val syncFeatureModule: Module = module {
             syncPreferences = get(),
             scheduleSyncUseCase = get(),
             workManager = get(),
+            connectivityChecker = get(),
         )
     }
 }
