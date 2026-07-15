@@ -35,6 +35,7 @@ import ua.com.radiokot.photoprism.features.ext.memories.logic.ScheduleDailyMemor
 import ua.com.radiokot.photoprism.features.ext.store.galleryExtensionStoreModule
 import ua.com.radiokot.photoprism.features.gallery.galleryFeatureModule
 import ua.com.radiokot.photoprism.features.gallery.logic.SearchBookmarkShortcutsManager
+import ua.com.radiokot.photoprism.features.recyclebin.recycleBinFeatureModule
 import ua.com.radiokot.photoprism.features.importt.importFeatureModule
 import ua.com.radiokot.photoprism.features.importt.view.ImportActivity
 import ua.com.radiokot.photoprism.features.upload.uploadFeatureModule
@@ -94,6 +95,7 @@ class PhotoPrismGallery : Application() {
                         + labelsFeatureModule
                         + mapFeatureModule
                         + syncFeatureModule
+                        + recycleBinFeatureModule
             )
             androidFileProperties("app.properties")
         }
