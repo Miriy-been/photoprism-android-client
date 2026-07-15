@@ -63,6 +63,7 @@ import ua.com.radiokot.photoprism.features.viewer.view.MediaViewerActivity
 import ua.com.radiokot.photoprism.features.albums.view.AlbumsActivity
 import ua.com.radiokot.photoprism.features.albums.data.model.Album
 import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
+import ua.com.radiokot.photoprism.features.recyclebin.view.RecycleBinActivity
 import ua.com.radiokot.photoprism.util.AsyncRecycledViewPoolInitializer
 import ua.com.radiokot.photoprism.util.LocalDate
 import ua.com.radiokot.photoprism.view.ErrorView
@@ -168,6 +169,7 @@ class GallerySingleRepositoryActivity : BaseActivity() {
             .setItems(
                 arrayOf(
                     getString(R.string.sync_settings),
+                    getString(R.string.recycle_bin),
                     getString(R.string.customize_bottom_nav_title),
                     getString(R.string.preferences),
                 )
@@ -178,10 +180,14 @@ class GallerySingleRepositoryActivity : BaseActivity() {
                     )
 
                     1 -> startActivity(
-                        Intent(this, ua.com.radiokot.photoprism.features.prefs.navcustomize.view.CustomizeNavActivity::class.java)
+                        Intent(this, RecycleBinActivity::class.java)
                     )
 
                     2 -> startActivity(
+                        Intent(this, ua.com.radiokot.photoprism.features.prefs.navcustomize.view.CustomizeNavActivity::class.java)
+                    )
+
+                    3 -> startActivity(
                         Intent(this, ua.com.radiokot.photoprism.features.prefs.view.PreferencesActivity::class.java)
                     )
                 }

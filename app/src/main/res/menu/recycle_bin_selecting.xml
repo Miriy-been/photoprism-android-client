@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/restore"
+        android:icon="@drawable/ic_restore"
+        android:title="@string/restore"
+        app:iconTint="?colorOnSurfaceVariant"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/permanent_delete"
+        android:icon="@drawable/ic_delete"
+        android:title="@string/permanent_delete"
+        app:iconTint="?colorOnSurfaceVariant"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/add_to_favorites"
+        android:icon="@drawable/ic_favorite"
+        android:title="@string/add_to_favorites"
+        app:iconTint="?colorOnSurfaceVariant"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/remove_from_favorites"
+        android:icon="@drawable/ic_favorite"
+        android:title="@string/remove_from_favorites"
+        app:iconTint="?colorOnSurfaceVariant"
+        app:showAsAction="never" />
+</menu>

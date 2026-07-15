@@ -34,4 +34,7 @@
     <string name="pk_ext_memories_max_entry_count" translatable="false">ext_memories_max_entry_count</string>
     <string name="pk_ext_memories_notifications" translatable="false">ext_memories_notifications</string>
     <string name="pk_ext_memories_people_to_forget" translatable="false">ext_memories_people_to_forget</string>
+
+    <string name="pk_recycle_bin_auto_clear" translatable="false">recycle_bin_auto_clear</string>
+    <string name="pk_recycle_bin_auto_clear_days" translatable="false">recycle_bin_auto_clear_days</string>
 </resources>

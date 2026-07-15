@@ -429,4 +429,27 @@
     <string name="album_created">Album created</string>
     <string name="failed_to_download_album">Failed to download the album</string>
     <string name="album_downloaded">Album downloaded</string>
+
+    <!-- Recycle Bin -->
+    <string name="recycle_bin">Recycle Bin</string>
+    <string name="recycle_bin_empty">Recycle Bin is empty</string>
+    <string name="restore">Restore</string>
+    <string name="permanent_delete">Permanent delete</string>
+    <string name="permanent_delete_confirmation">Delete these items forever? This cannot be undone.</string>
+    <string name="empty_recycle_bin">Empty recycle bin</string>
+    <string name="empty_recycle_bin_confirmation">Are you sure you want to permanently delete all items in the recycle bin?</string>
+    <string name="template_items_restored">Restored %1$d items</string>
+    <string name="template_items_permanently_deleted">Permanently deleted %1$d items</string>
+
+    <!-- Delete/Recycle Bin dialogs -->
+    <string name="move_to_recycle_bin">Move to Recycle Bin</string>
+    <string name="gallery_delete_to_recycle_bin_single">Move the selected item to the Recycle Bin?</string>
+    <string name="gallery_delete_to_recycle_bin_plural">Move %d selected items to the Recycle Bin?</string>
+    <string name="media_viewer_delete_to_recycle_bin">Move this item to the Recycle Bin?</string>
+    <string name="recycle_bin_auto_clear_hint">They will be automatically cleared after %1$d days.</string>
+
+    <!-- Recycle Bin Preferences -->
+    <string name="recycle_bin_auto_clear_title">Auto-clear Recycle Bin</string>
+    <string name="recycle_bin_auto_clear_summary">Automatically permanently delete items after the set period</string>
+    <string name="recycle_bin_auto_clear_days_title">Auto-clear period</string>
 </resources>

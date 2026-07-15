@@ -277,6 +277,13 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".features.recyclebin.view.RecycleBinActivity"
+            android:exported="true"
+            android:parentActivityName=".features.gallery.view.GalleryActivity"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".features.ext.key.renewal.view.KeyRenewalActivity"
             android:exported="false"
             android:label="@string/key_renewal_title"

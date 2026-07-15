@@ -67,6 +67,7 @@ import ua.com.radiokot.photoprism.features.map.data.storage.MapPreferences
 import ua.com.radiokot.photoprism.features.prefs.extension.bindToSubject
 import ua.com.radiokot.photoprism.features.prefs.extension.requirePreference
 import ua.com.radiokot.photoprism.features.prefs.navcustomize.view.CustomizeNavActivity
+import ua.com.radiokot.photoprism.features.recyclebin.data.storage.RecycleBinPreferences
 import ua.com.radiokot.photoprism.features.sync.view.SyncSettingsActivity
 import ua.com.radiokot.photoprism.features.viewer.slideshow.data.model.SlideshowSpeed
 import ua.com.radiokot.photoprism.features.viewer.slideshow.data.storage.SlideshowPreferences
@@ -113,6 +114,7 @@ class PreferencesFragment :
     private val featureFlags: FeatureFlags by inject()
     private val locale: Locale by inject()
     private val mapPreferences: MapPreferences by inject()
+    private val recycleBinPreferences: RecycleBinPreferences by inject()
     private val cachedMediaDao: CachedMediaDao by inject()
 
     private val issueReportingUrl: String = getKoin()
@@ -258,6 +260,21 @@ class PreferencesFragment :
                     }
                     .setNegativeButton(R.string.cancel, null)
                     .show()
+                true
+            }
+        }
+
+        with(requirePreference(R.string.pk_recycle_bin_auto_clear)) {
+            this as SwitchPreferenceCompat
+            bindToSubject(recycleBinPreferences.autoClearEnabled, viewLifecycleOwner)
+        }
+        with(requirePreference(R.string.pk_recycle_bin_auto_clear_days)) {
+            this as ListPreference
+            entries = resources.getStringArray(R.array.recycle_bin_auto_clear_days_entries)
+            entryValues = resources.getStringArray(R.array.recycle_bin_auto_clear_days_values)
+            value = (recycleBinPreferences.autoClearDays.value ?: 30).toString()
+            setOnPreferenceChangeListener { _, newValue ->
+                recycleBinPreferences.autoClearDays.onNext((newValue as String).toInt())
                 true
             }
         }

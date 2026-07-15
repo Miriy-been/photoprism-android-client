@@ -394,4 +394,23 @@
     <string name="cache_cleared">缓存已清除</string>
     <string name="cache_cleared_error">清除缓存失败</string>
 
+    <!-- 回收站 -->
+    <string name="recycle_bin">回收站</string>
+    <string name="recycle_bin_empty">回收站是空的</string>
+    <string name="move_to_recycle_bin">移入回收站</string>
+    <string name="gallery_delete_to_recycle_bin_single">将这张图片移入回收站？</string>
+    <string name="gallery_delete_to_recycle_bin_plural">将 %d 张图片移入回收站？</string>
+    <string name="media_viewer_delete_to_recycle_bin">将这张图片移入回收站？%1$d 天后将自动清空。</string>
+    <string name="recycle_bin_auto_clear_hint">%1$d 天后将自动清空。</string>
+    <string name="restore">还原</string>
+    <string name="permanent_delete">彻底删除</string>
+    <string name="permanent_delete_confirmation">彻底删除这些图片？此操作不可撤销。</string>
+    <string name="empty_recycle_bin">清空回收站</string>
+    <string name="empty_recycle_bin_confirmation">确定要永久删除回收站中的所有图片？</string>
+    <string name="recycle_bin_auto_clear_title">自动清空回收站</string>
+    <string name="recycle_bin_auto_clear_summary">超过设定天数后自动永久删除回收站中的图片</string>
+    <string name="recycle_bin_auto_clear_days_title">自动清空天数</string>
+    <string name="template_items_restored">已还原 %1$d 张图片</string>
+    <string name="template_items_permanently_deleted">已彻底删除 %1$d 张图片</string>
+
 </resources>

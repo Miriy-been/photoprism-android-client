@@ -824,9 +824,6 @@ class GalleryActivity : BaseActivity() {
                     R.id.add_to_album ->
                         viewModel.onAddToAlbumMultipleSelectionClicked()
 
-                    R.id.archive ->
-                        viewModel.onArchiveMultipleSelectionClicked()
-
                     R.id.delete ->
                         viewModel.onDeleteMultipleSelectionClicked()
 
@@ -1178,9 +1175,22 @@ class GalleryActivity : BaseActivity() {
     }
 
     private fun openDeletingConfirmationDialog() {
+        val selectedItemsCount = viewModel.selectedItemsCount.value ?: 0
+        val messageRes = if (selectedItemsCount == 1) {
+            R.string.gallery_delete_to_recycle_bin_single
+        } else {
+            R.string.gallery_delete_to_recycle_bin_plural
+        }
+
         MaterialAlertDialogBuilder(this)
-            .setMessage(R.string.gallery_deleting_confirmation)
-            .setPositiveButton(R.string.delete) { _, _ ->
+            .setTitle(R.string.recycle_bin)
+            .setMessage(
+                if (selectedItemsCount == 1)
+                    getString(messageRes)
+                else
+                    getString(messageRes, selectedItemsCount)
+            )
+            .setPositiveButton(R.string.move_to_recycle_bin) { _, _ ->
                 viewModel.onDeletingGalleryMediaConfirmed()
             }
             .setNegativeButton(R.string.cancel, null)

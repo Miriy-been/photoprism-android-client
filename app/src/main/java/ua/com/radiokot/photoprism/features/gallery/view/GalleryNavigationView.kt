@@ -18,6 +18,7 @@ import ua.com.radiokot.photoprism.features.gallery.data.storage.BottomNavItemId
 import ua.com.radiokot.photoprism.features.gallery.search.view.GallerySearchBarView
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryViewModel
 import ua.com.radiokot.photoprism.features.prefs.navcustomize.view.CustomizeNavActivity
+import ua.com.radiokot.photoprism.features.recyclebin.view.RecycleBinActivity
 
 class GalleryNavigationView(
     private val viewModel: GalleryViewModel,
@@ -138,6 +139,13 @@ class GalleryNavigationView(
                             Intent(anchorView.context, CustomizeNavActivity::class.java)
                         )
                     }
+                }
+            }
+            moreRecycleBin.setOnClickListener {
+                closeAnd {
+                    anchorView.context.startActivity(
+                        Intent(anchorView.context, RecycleBinActivity::class.java)
+                    )
                 }
             }
             morePreferences.setOnClickListener {

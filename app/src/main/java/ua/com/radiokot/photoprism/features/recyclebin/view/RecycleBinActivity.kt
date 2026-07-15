@@ -1,21 +1,16 @@
-package ua.com.radiokot.photoprism.features.gallery.view
+package ua.com.radiokot.photoprism.features.recyclebin.view
 
 import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.Menu
-import android.view.MenuInflater
-import android.view.View
-import android.view.ViewGroup
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.forEach
 import androidx.core.view.isInvisible
-import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.GridLayoutManager.SpanSizeLookup
 import androidx.recyclerview.widget.RecyclerView.Adapter
@@ -31,130 +26,80 @@ import com.mikepenz.fastadapter.listeners.addLongClickListener
 import com.mikepenz.fastadapter.scroll.EndlessRecyclerOnScrollListener
 import io.reactivex.rxjava3.kotlin.subscribeBy
 import org.koin.android.ext.android.inject
-import org.koin.android.ext.android.getKoin
-import org.koin.android.scope.AndroidScopeComponent
-import org.koin.androidx.scope.createFragmentScope
 import org.koin.androidx.viewmodel.ext.android.viewModel
-import org.koin.core.qualifier.named
-import org.koin.core.scope.Scope
 import ua.com.radiokot.photoprism.R
+import ua.com.radiokot.photoprism.base.view.BaseActivity
 import ua.com.radiokot.photoprism.databinding.ActivityGallerySingleRepositoryBinding
-import ua.com.radiokot.photoprism.di.UTC_MONTH_YEAR_DATE_FORMAT
 import ua.com.radiokot.photoprism.extension.autoDispose
-import ua.com.radiokot.photoprism.extension.capitalized
 import ua.com.radiokot.photoprism.extension.ensureItemIsVisible
-import ua.com.radiokot.photoprism.di.DI_SCOPE_SESSION
 import ua.com.radiokot.photoprism.extension.kLogger
 import ua.com.radiokot.photoprism.extension.observeOnMain
 import ua.com.radiokot.photoprism.extension.setBetter
 import ua.com.radiokot.photoprism.extension.showOverflowItemIcons
 import ua.com.radiokot.photoprism.extension.subscribe
-import ua.com.radiokot.photoprism.features.albums.data.model.Album
-import ua.com.radiokot.photoprism.features.albums.view.AlbumsActivity
-import ua.com.radiokot.photoprism.features.albums.view.DestinationAlbumSelectionActivity
-import ua.com.radiokot.photoprism.features.gallery.data.model.SearchConfig
 import ua.com.radiokot.photoprism.features.gallery.data.model.SendableFile
-import ua.com.radiokot.photoprism.features.gallery.data.storage.BottomNavItemId
 import ua.com.radiokot.photoprism.features.gallery.data.storage.SimpleGalleryMediaRepository
 import ua.com.radiokot.photoprism.features.gallery.logic.FileReturnIntentCreator
+import ua.com.radiokot.photoprism.features.gallery.view.DownloadProgressView
+import ua.com.radiokot.photoprism.features.gallery.view.GalleryDragSelectionView
+import ua.com.radiokot.photoprism.features.gallery.view.GalleryListItemDiffCallback
+import ua.com.radiokot.photoprism.features.gallery.view.ShareSheetShareEventReceiver
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryContentLoadingErrorResources
-import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryListItem
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryListViewModel
+import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryListItem
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryLoadingFooterListItem
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryMediaDownloadActionsViewModel
 import ua.com.radiokot.photoprism.features.gallery.view.model.GalleryMediaRemoteActionsViewModel
-import ua.com.radiokot.photoprism.features.gallery.view.model.GallerySingleRepositoryViewModel
-import ua.com.radiokot.photoprism.features.prefs.navcustomize.view.CustomizeNavActivity
-import ua.com.radiokot.photoprism.features.recyclebin.view.RecycleBinActivity
+import ua.com.radiokot.photoprism.features.recyclebin.view.model.RecycleBinViewModel
 import ua.com.radiokot.photoprism.features.viewer.view.MediaViewerActivity
 import ua.com.radiokot.photoprism.util.AsyncRecycledViewPoolInitializer
-import ua.com.radiokot.photoprism.util.LocalDate
 import ua.com.radiokot.photoprism.view.ErrorView
-import java.text.DateFormat
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
-class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
+class RecycleBinActivity : BaseActivity() {
 
-    override val scope: Scope by lazy {
-        getKoin().getScope(DI_SCOPE_SESSION)
-            .apply { linkTo(createFragmentScope()) }
-    }
-
-    private val log = kLogger("GallerySingleRepositoryFragment")
-    private lateinit var binding: ActivityGallerySingleRepositoryBinding
-    private val viewModel: GallerySingleRepositoryViewModel by viewModel()
-    private val monthYearDateFormat: DateFormat by inject(named(UTC_MONTH_YEAR_DATE_FORMAT))
+    private val log = kLogger("RecycleBinActivity")
+    private lateinit var view: ActivityGallerySingleRepositoryBinding
+    private val viewModel: RecycleBinViewModel by viewModel()
     private val galleryItemsAdapter = ItemAdapter<GalleryListItem>()
     private lateinit var endlessScrollListener: EndlessRecyclerOnScrollListener
-    private val fileReturnIntentCreator: FileReturnIntentCreator by inject()
-
-    private var title: String? = null
-    private var repositoryParams: SimpleGalleryMediaRepository.Params? = null
-    private var monthTitle: LocalDate? = null
-    private var albumUid: String? = null
-
     private val viewerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
         this::onViewerResult,
     )
     private val storagePermissionRequestLauncher =
         registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            onStoragePermissionResult(isGranted)
-        }
-    private val addDestinationAlbumSelectionLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-        this::onAddingDestinationAlbumSelectionResult,
-    )
-
+            ActivityResultContracts.RequestPermission(),
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            this::onStoragePermissionResult
+        )
     private val downloadProgressView: DownloadProgressView by lazy {
         DownloadProgressView(
             viewModel = viewModel,
-            fragmentManager = childFragmentManager,
-            errorSnackbarView = binding.galleryRecyclerView,
-            lifecycleOwner = viewLifecycleOwner,
+            fragmentManager = supportFragmentManager,
+            errorSnackbarView = view.galleryRecyclerView,
+            lifecycleOwner = this
         )
     }
+    private val fileReturnIntentCreator: FileReturnIntentCreator by inject()
     private val dragSelectionView: GalleryDragSelectionView by lazy {
         GalleryDragSelectionView(
             viewModel = viewModel,
-            lifecycleOwner = viewLifecycleOwner,
+            lifecycleOwner = this,
         )
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?,
-    ): View {
-        binding = ActivityGallerySingleRepositoryBinding.inflate(inflater, container, false)
-        return binding.root
-    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+        view = ActivityGallerySingleRepositoryBinding.inflate(layoutInflater)
+        setContentView(view.root)
 
-        title = arguments?.getString(TITLE_ARG)
-        @Suppress("DEPRECATION")
-        repositoryParams = arguments?.getParcelable(REPO_PARAMS_ARG)
-        @Suppress("DEPRECATION")
-        monthTitle = arguments?.getSerializable(MONTH_TITLE_ARG) as? LocalDate
-        albumUid = arguments?.getString(ALBUM_UID_ARG)
-
-        val repoParams = checkNotNull(repositoryParams) {
-            "No repository params specified"
-        }
-
-        // Always init as viewing (no file-picker mode inside the gallery)
-        viewModel.initViewingOnce(
-            repositoryParams = repoParams,
-            albumUid = albumUid,
-        )
+        viewModel.initOnce()
 
         // Init the list once it is laid out.
-        binding.galleryRecyclerView.doOnPreDraw {
+        view.galleryRecyclerView.doOnPreDraw {
             initList(savedInstanceState)
         }
         initToolbar()
@@ -166,132 +111,38 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
         subscribeToEvents()
 
         // Allow the view model to intercept back press.
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
-            viewModel.backPressedCallback,
-        )
+        onBackPressedDispatcher.addCallback(viewModel.backPressedCallback)
     }
 
     private fun initToolbar() {
-        (requireActivity() as? androidx.appcompat.app.AppCompatActivity)
-            ?.setSupportActionBar(binding.toolbar)
-        val toolbarTitle = title ?: monthTitle?.let {
-            monthYearDateFormat.format(it).capitalized()
+        setSupportActionBar(view.toolbar)
+        supportActionBar?.apply {
+            setDisplayHomeAsUpEnabled(true)
+            setHomeAsUpIndicator(R.drawable.ic_close)
         }
-        if (toolbarTitle != null) {
-            binding.toolbar.title = toolbarTitle
-        }
+        setTitle(R.string.recycle_bin)
     }
 
-    private fun emitSwitchTab(tabId: BottomNavItemId) {
-        val parentActivity = requireActivity()
-        if (parentActivity is GalleryActivity) {
-            parentActivity.onSwitchToTab(tabId)
-        } else {
-            // Fallback: launch as activity
-            when (tabId) {
-                BottomNavItemId.PHOTOS -> {
-                    startActivity(
-                        Intent(requireContext(), GalleryActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        }
-                    )
-                }
-
-                BottomNavItemId.ALBUMS -> {
-                    startActivity(
-                        Intent(requireContext(), AlbumsActivity::class.java)
-                            .setAction(requireActivity().intent.action)
-                            .putExtras(requireActivity().intent.extras ?: Bundle())
-                            .putExtras(
-                                AlbumsActivity.getBundle(
-                                    albumType = Album.TypeName.FOLDER,
-                                    defaultSearchConfig = SearchConfig.DEFAULT,
-                                )
-                            )
-                    )
-                }
-
-                BottomNavItemId.FAVORITES -> {
-                    startActivity(
-                        Intent(requireContext(), GallerySingleRepositoryActivity::class.java)
-                            .putExtras(requireActivity().intent.extras ?: Bundle())
-                            .putExtras(
-                                GallerySingleRepositoryActivity.getBundle(
-                                    title = getString(R.string.favorites),
-                                    repositoryParams = SimpleGalleryMediaRepository.Params(
-                                        searchConfig = SearchConfig.DEFAULT.copy(
-                                            onlyFavorite = true,
-                                        ),
-                                    ),
-                                )
-                            )
-                    )
-                }
-
-                else -> {}
-            }
-        }
-    }
-
-    private fun showMoreSheet() {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.more)
-            .setItems(
-                arrayOf(
-                    getString(R.string.sync_settings),
-                    getString(R.string.recycle_bin),
-                    getString(R.string.customize_bottom_nav_title),
-                    getString(R.string.preferences),
-                )
-            ) { _, which ->
-                when (which) {
-                    0 -> startActivity(
-                        Intent(
-                            requireContext(),
-                            ua.com.radiokot.photoprism.features.sync.view.SyncSettingsActivity::class.java
-                        )
-                    )
-
-                    1 -> startActivity(
-                        Intent(requireContext(), RecycleBinActivity::class.java)
-                    )
-
-                    2 -> startActivity(
-                        Intent(requireContext(), CustomizeNavActivity::class.java)
-                    )
-
-                    3 -> startActivity(
-                        Intent(
-                            requireContext(),
-                            ua.com.radiokot.photoprism.features.prefs.view.PreferencesActivity::class.java
-                        )
-                    )
-                }
-            }
-            .show()
-    }
-
-    private fun initSwipeRefresh() = with(binding.swipeRefreshLayout) {
+    private fun initSwipeRefresh() = with(view.swipeRefreshLayout) {
         setOnRefreshListener(viewModel::onSwipeRefreshPulled)
 
-        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+        viewModel.isLoading.observe(this@RecycleBinActivity) { isLoading ->
             isRefreshing = isLoading
                     && galleryItemsAdapter.adapterItemCount > 0
-                    && !binding.galleryRecyclerView.canScrollVertically(-1)
+                    && !view.galleryRecyclerView.canScrollVertically(-1)
         }
     }
 
     private fun initErrorView() {
-        binding.errorView.replaces(binding.galleryRecyclerView)
-        viewModel.mainError.observe(viewLifecycleOwner) { error ->
+        view.errorView.replaces(view.galleryRecyclerView)
+        viewModel.mainError.observe(this) { error ->
             if (error == null) {
-                binding.errorView.hide()
+                view.errorView.hide()
                 return@observe
             }
 
             val errorToShow: ErrorView.Error = when (error) {
-                GallerySingleRepositoryViewModel.Error.NoMediaFound ->
+                is RecycleBinViewModel.Error.NoMediaFound ->
                     ErrorView.Error.EmptyView(
                         message = error.localizedMessage,
                     )
@@ -304,12 +155,16 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                     )
             }
 
-            binding.errorView.showError(errorToShow)
+            view.errorView.showError(errorToShow)
         }
     }
 
     private fun initMultipleSelection() {
-        with(binding.selectionBottomAppBar) {
+        with(view.selectionBottomAppBar) {
+            // Replace the default gallery selecting menu with the recycle bin specific menu.
+            menu.clear()
+            menuInflater.inflate(R.menu.recycle_bin_selecting, menu)
+
             setNavigationOnClickListener {
                 viewModel.onClearSelectionClicked()
             }
@@ -324,17 +179,11 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                     R.id.download ->
                         viewModel.onDownloadMultipleSelectionClicked()
 
-                    R.id.add_to_album ->
-                        viewModel.onAddToAlbumMultipleSelectionClicked()
+                    R.id.restore ->
+                        viewModel.onRestoreMultipleSelectionClicked()
 
-                    R.id.remove_from_album ->
-                        viewModel.onRemoveFromAlbumMultipleSelectionClicked()
-
-                    R.id.archive ->
-                        viewModel.onArchiveMultipleSelectionClicked()
-
-                    R.id.delete ->
-                        viewModel.onDeleteMultipleSelectionClicked()
+                    R.id.permanent_delete ->
+                        viewModel.onPermanentDeleteMultipleSelectionClicked()
 
                     R.id.add_to_favorites ->
                         viewModel.onAddToFavoritesMultipleSelectionClicked()
@@ -348,12 +197,12 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
 
             viewModel.state.subscribeBy { state ->
                 isInvisible =
-                    state is GallerySingleRepositoryViewModel.State.Viewing
+                    state is RecycleBinViewModel.State.Viewing
 
                 navigationIcon =
-                    if (state is GallerySingleRepositoryViewModel.State.Selecting && state.allowMultiple)
+                    if (state is RecycleBinViewModel.State.Selecting && state.allowMultiple)
                         ContextCompat.getDrawable(
-                            requireContext(),
+                            this@RecycleBinActivity,
                             R.drawable.ic_close
                         )
                     else
@@ -363,18 +212,8 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
             }
         }
 
-        binding.doneSelectingFab.setOnClickListener {
-            viewModel.onDoneMultipleSelectionClicked()
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            ShareSheetShareEventReceiver.shareEvents.subscribe(viewLifecycleOwner) {
-                viewModel.onDownloadedMediaFilesShared()
-            }
-        }
-
-        viewModel.selectedItemsCount.observeOnMain().subscribe(viewLifecycleOwner) { count ->
-            binding.selectionBottomAppBarTitleTextView.text =
+        viewModel.selectedItemsCount.observeOnMain().subscribe(this) { count ->
+            view.selectionBottomAppBarTitleTextView.text =
                 if (count == 0)
                     getString(R.string.select_content)
                 else
@@ -382,29 +221,15 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
 
             updateMultipleSelectionMenuVisibility()
         }
-
-        viewModel.state.subscribeBy { state ->
-            if (state is GallerySingleRepositoryViewModel.State.Selecting.ForOtherApp) {
-                viewModel.selectedItemsCount.observeOnMain().subscribe(viewLifecycleOwner) { count ->
-                    if (count > 0) {
-                        binding.doneSelectingFab.show()
-                    } else {
-                        binding.doneSelectingFab.hide()
-                    }
-                }
-            } else {
-                binding.doneSelectingFab.hide()
-            }
-        }.autoDispose(this)
     }
 
     private fun updateMultipleSelectionMenuVisibility() {
         val multipleSelectionItemsCount = viewModel.selectedItemsCount.value ?: 0
         val state = viewModel.currentState
         val areUserSelectionItemsVisible =
-            multipleSelectionItemsCount > 0 && state is GallerySingleRepositoryViewModel.State.Selecting.ForUser
+            multipleSelectionItemsCount > 0 && state is RecycleBinViewModel.State.Selecting.ForUser
 
-        with(binding.selectionBottomAppBar.menu) {
+        with(view.selectionBottomAppBar.menu) {
             forEach { menuItem ->
                 menuItem.isVisible = areUserSelectionItemsVisible
             }
@@ -412,13 +237,12 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                 areUserSelectionItemsVisible && viewModel.canAddSelectedToFavorites
             findItem(R.id.remove_from_favorites).isVisible =
                 areUserSelectionItemsVisible && viewModel.canRemoveSelectedFromFavorites
-            findItem(R.id.remove_from_album).isVisible =
-                areUserSelectionItemsVisible && state.canRemoveFromAlbum
         }
     }
 
     private fun initList(savedInstanceState: Bundle?) {
         val galleryProgressFooterAdapter = ItemAdapter<GalleryLoadingFooterListItem>().apply {
+
             setNewList(
                 listOf(
                     GalleryLoadingFooterListItem(
@@ -428,7 +252,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                 )
             )
 
-            viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            viewModel.isLoading.observe(this@RecycleBinActivity) { isLoading ->
                 this[0] = GalleryLoadingFooterListItem(
                     isLoading = isLoading,
                     canLoadMore = viewModel.canLoadMore,
@@ -442,6 +266,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                 galleryProgressFooterAdapter
             )
         ).apply {
+
             stateRestorationPolicy = Adapter.StateRestorationPolicy.PREVENT
 
             addClickListener(
@@ -502,7 +327,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
             .toInt()
             .coerceAtLeast(1)
 
-        with(binding.galleryRecyclerView) {
+        with(view.galleryRecyclerView) {
             val listWidth = measuredWidth
                 .takeIf { it > 0 }
                 ?: FALLBACK_LIST_SIZE
@@ -557,7 +382,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                 visibleThreshold = gridLayoutManager.spanCount * 5
             ) {
                 init {
-                    viewModel.isLoading.observe(this@GallerySingleRepositoryFragment.viewLifecycleOwner) { isLoading ->
+                    viewModel.isLoading.observe(this@RecycleBinActivity) { isLoading ->
                         if (isLoading) {
                             disable()
                         } else {
@@ -592,7 +417,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                     itemViewHolderFactory = GalleryListItem.Media.itemViewHolderFactory,
                 )
                     .initPool(
-                        recyclerView = binding.galleryRecyclerView,
+                        recyclerView = view.galleryRecyclerView,
                         recycledViewsCount = maxRecycledMediaViewCount,
                     )
             }
@@ -603,7 +428,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                 globalListAdapter = galleryAdapter,
                 recyclerView = this,
                 dragToSelectListener = { isActive ->
-                    binding.swipeRefreshLayout.isEnabled = !isActive
+                    view.swipeRefreshLayout.isEnabled = !isActive
                 },
             )
         }
@@ -612,14 +437,14 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
         viewModel
             .itemList
             .observeOnMain()
-            .subscribe(viewLifecycleOwner) { newItems ->
+            .subscribe(this@RecycleBinActivity) { newItems ->
 
                 if (newItems.isNotEmpty()) {
                     galleryAdapter.stateRestorationPolicy = Adapter.StateRestorationPolicy.ALLOW
                 }
 
                 FastAdapterDiffUtil.setBetter(
-                    recyclerView = binding.galleryRecyclerView,
+                    recyclerView = view.galleryRecyclerView,
                     adapter = galleryItemsAdapter,
                     items = newItems,
                     callback = diffCallback,
@@ -629,7 +454,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
     }
 
     private fun subscribeToEvents() {
-        viewModel.itemListEvents.observeOnMain().subscribe(viewLifecycleOwner) { event ->
+        viewModel.itemListEvents.observeOnMain().subscribe(this) { event ->
             log.debug {
                 "subscribeToEvents(): received_item_list_event:" +
                         "\nevent=$event"
@@ -641,8 +466,8 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                 }
 
                 is GalleryListViewModel.Event.EnsureListItemVisible ->
-                    binding.galleryRecyclerView.post {
-                        binding.galleryRecyclerView.ensureItemIsVisible(
+                    view.galleryRecyclerView.post {
+                        view.galleryRecyclerView.ensureItemIsVisible(
                             itemGlobalPosition = galleryItemsAdapter.getGlobalPosition(event.listItemIndex)
                         )
                     }
@@ -658,7 +483,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
             }
         }
 
-        viewModel.galleryMediaDownloadActionsEvents.observeOnMain().subscribe(viewLifecycleOwner) { event ->
+        viewModel.galleryMediaDownloadActionsEvents.observeOnMain().subscribe(this) { event ->
             log.debug {
                 "subscribeToEvents(): received_media_files_actions_event:" +
                         "\nevent=$event"
@@ -690,26 +515,26 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
             }
         }
 
-        viewModel.galleryMediaRemoteActionsEvents.observeOnMain().subscribe(viewLifecycleOwner) { event ->
+        viewModel.galleryMediaRemoteActionsEvents.observeOnMain().subscribe(this) { event ->
             log.debug {
                 "subscribeToEvents(): received_gallery_media_remote_actions_event:" +
                         "\nevent=$event"
             }
 
             when (event) {
-                GalleryMediaRemoteActionsViewModel.Event.OpenAlbumForAddingSelection ->
-                    openAddingDestinationAlbumSelection()
+                GalleryMediaRemoteActionsViewModel.Event.OpenAlbumForAddingSelection -> {
+                    // Not applicable in the recycle bin context.
+                    log.debug { "subscribeToEvents(): ignoring_open_album_for_adding_selection" }
+                }
 
-                GalleryMediaRemoteActionsViewModel.Event.OpenDeletingConfirmationDialog ->
-                    openDeletingConfirmationDialog()
+                GalleryMediaRemoteActionsViewModel.Event.OpenDeletingConfirmationDialog -> {
+                    // Not applicable in the recycle bin context.
+                    log.debug { "subscribeToEvents(): ignoring_open_deleting_confirmation_dialog" }
+                }
 
-                is GalleryMediaRemoteActionsViewModel.Event.ShowFloatingAddedToAlbumMessage ->
-                    showFloatingMessage(
-                        getString(
-                            R.string.template_selected_added_to_album,
-                            event.albumTitle,
-                        )
-                    )
+                is GalleryMediaRemoteActionsViewModel.Event.ShowFloatingAddedToAlbumMessage -> {
+                    log.debug { "subscribeToEvents(): ignoring_show_floating_added_to_album_message" }
+                }
             }
 
             log.debug {
@@ -718,27 +543,45 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
             }
         }
 
-        viewModel.events.subscribe(viewLifecycleOwner) { event ->
+        viewModel.events.subscribe(this) { event ->
             log.debug {
                 "subscribeToEvents(): received_new_event:" +
                         "\nevent=$event"
             }
 
             when (event) {
-                is GallerySingleRepositoryViewModel.Event.ResetScroll -> {
+                is RecycleBinViewModel.Event.ResetScroll -> {
                     resetScroll()
                 }
 
-                is GallerySingleRepositoryViewModel.Event.ShowFloatingError ->
+                is RecycleBinViewModel.Event.ShowFloatingError ->
                     showFloatingError(event.error)
 
-                is GallerySingleRepositoryViewModel.Event.OpenViewer ->
+                is RecycleBinViewModel.Event.OpenViewer ->
                     openViewer(
                         mediaIndex = event.mediaIndex,
                         repositoryParams = event.repositoryParams,
                         areActionsEnabled = event.areActionsEnabled,
-                        albumUid = event.albumUid,
                     )
+
+                is RecycleBinViewModel.Event.ItemsRestored ->
+                    showFloatingMessage(
+                        getString(
+                            R.string.template_items_restored,
+                            event.count,
+                        )
+                    )
+
+                is RecycleBinViewModel.Event.ItemsPermanentlyDeleted ->
+                    showFloatingMessage(
+                        getString(
+                            R.string.template_items_permanently_deleted,
+                            event.count,
+                        )
+                    )
+
+                is RecycleBinViewModel.Event.ShowError ->
+                    showFloatingError(event.message)
             }
 
             log.debug {
@@ -753,20 +596,25 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
             "resetScroll(): resetting_scroll"
         }
 
-        with(binding.galleryRecyclerView) {
+        with(view.galleryRecyclerView) {
             scrollToPosition(0)
             endlessScrollListener.resetPageCount(0)
         }
     }
 
-    private fun showFloatingError(error: GallerySingleRepositoryViewModel.Error) {
-        Snackbar.make(binding.galleryRecyclerView, error.localizedMessage, Snackbar.LENGTH_SHORT)
+    private fun showFloatingError(error: RecycleBinViewModel.Error) {
+        Snackbar.make(view.galleryRecyclerView, error.localizedMessage, Snackbar.LENGTH_SHORT)
             .setAction(R.string.try_again) { viewModel.onFloatingErrorRetryClicked() }
             .show()
     }
 
+    private fun showFloatingError(message: String) {
+        Snackbar.make(view.galleryRecyclerView, message, Snackbar.LENGTH_SHORT)
+            .show()
+    }
+
     private fun showFloatingMessage(message: String) {
-        Snackbar.make(binding.galleryRecyclerView, message, Snackbar.LENGTH_SHORT)
+        Snackbar.make(view.galleryRecyclerView, message, Snackbar.LENGTH_SHORT)
             .show()
     }
 
@@ -774,16 +622,15 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
         mediaIndex: Int,
         repositoryParams: SimpleGalleryMediaRepository.Params,
         areActionsEnabled: Boolean,
-        albumUid: String?,
     ) {
         viewerLauncher.launch(
-            Intent(requireContext(), MediaViewerActivity::class.java)
+            Intent(this, MediaViewerActivity::class.java)
                 .putExtras(
                     MediaViewerActivity.getBundle(
                         mediaIndex = mediaIndex,
                         repositoryParams = repositoryParams,
                         areActionsEnabled = areActionsEnabled,
-                        albumUid = albumUid,
+                        albumUid = null,
                     )
                 )
         )
@@ -796,44 +643,11 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
         viewModel.onViewerReturnedLastViewedMediaIndex(lastViewedMediaIndex)
     }
 
-    private fun openAddingDestinationAlbumSelection() {
-        addDestinationAlbumSelectionLauncher.launch(
-            Intent(requireContext(), DestinationAlbumSelectionActivity::class.java)
-                .putExtras(
-                    DestinationAlbumSelectionActivity.getBundle(
-                        selectedAlbums = emptySet(),
-                        isSingleSelection = true,
-                    )
-                )
-        )
-    }
-
-    private fun onAddingDestinationAlbumSelectionResult(result: ActivityResult) {
-        val bundle = result.data?.extras
-        if (result.resultCode == android.app.Activity.RESULT_OK && bundle != null) {
-            viewModel.onAlbumForAddingGalleryMediaSelected(
-                selectedAlbum = DestinationAlbumSelectionActivity
-                    .getSelectedAlbums(bundle)
-                    .first()
-            )
-        }
-    }
-
-    private fun openDeletingConfirmationDialog() {
-        MaterialAlertDialogBuilder(requireContext())
-            .setMessage(R.string.gallery_deleting_confirmation)
-            .setPositiveButton(R.string.delete) { _, _ ->
-                viewModel.onDeletingGalleryMediaConfirmed()
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
     private fun returnDownloadedFiles(
         filesToReturn: List<SendableFile>,
     ) {
         val resultIntent = fileReturnIntentCreator.createIntent(filesToReturn)
-        requireActivity().setResult(android.app.Activity.RESULT_OK, resultIntent)
+        setResult(RESULT_OK, resultIntent)
 
         log.debug {
             "returnDownloadedFiles(): result_set_finishing:" +
@@ -841,7 +655,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
                     "\nfilesToReturnCount=${filesToReturn.size}"
         }
 
-        requireActivity().finish()
+        finish()
     }
 
     private fun shareDownloadedFiles(
@@ -850,7 +664,7 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
         val resultIntent = fileReturnIntentCreator.createIntent(files)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            val callbackPendingIntent = ShareSheetShareEventReceiver.getPendingIntent(requireContext())
+            val callbackPendingIntent = ShareSheetShareEventReceiver.getPendingIntent(this)
 
             log.debug {
                 "shareDownloadedFiles(): starting_intent_with_callback:" +
@@ -885,60 +699,55 @@ class GallerySingleRepositoryFragment : Fragment(), AndroidScopeComponent {
     }
 
     private fun requestStoragePermission() {
-        storagePermissionRequestLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        storagePermissionRequestLauncher.launch(Unit)
     }
 
     private fun onStoragePermissionResult(isGranted: Boolean) {
         viewModel.onStoragePermissionResult(isGranted)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.gallery_single_repository, menu)
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.recycle_bin, menu)
 
         menu?.findItem(R.id.sort)?.setOnMenuItemClickListener {
             viewModel.onSortClicked()
             true
         }
 
-        super.onCreateOptionsMenu(menu, inflater)
+        menu?.findItem(R.id.empty_recycle_bin)?.setOnMenuItemClickListener {
+            showEmptyRecycleBinConfirmationDialog()
+            true
+        }
+
+        return super.onCreateOptionsMenu(menu)
     }
 
-    override fun onViewStateRestored(savedInstanceState: Bundle?) {
-        super.onViewStateRestored(savedInstanceState)
-        setHasOptionsMenu(true)
+    private fun showEmptyRecycleBinConfirmationDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.empty_recycle_bin)
+            .setMessage(R.string.empty_recycle_bin_confirmation)
+            .setPositiveButton(R.string.empty_recycle_bin) { _, _ ->
+                viewModel.onEmptyRecycleBinClicked()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
-    private val GallerySingleRepositoryViewModel.Error.localizedMessage: String
+    private val RecycleBinViewModel.Error.localizedMessage: String
         get() = when (this) {
-            GallerySingleRepositoryViewModel.Error.NoMediaFound ->
+            RecycleBinViewModel.Error.NoMediaFound ->
                 getString(R.string.nothing_found)
 
-            is GallerySingleRepositoryViewModel.Error.ContentLoadingError ->
+            is RecycleBinViewModel.Error.ContentLoadingError ->
                 GalleryContentLoadingErrorResources.getMessage(
                     error = contentLoadingError,
-                    context = requireContext(),
+                    context = this@RecycleBinActivity,
                 )
         }
 
     companion object {
         private const val FALLBACK_LIST_SIZE = 100
-        private const val TITLE_ARG = "title"
-        private const val MONTH_TITLE_ARG = "month_title"
-        private const val ALBUM_UID_ARG = "album_uid"
-        private const val REPO_PARAMS_ARG = "repo_params"
 
-        fun newInstance(
-            title: String? = null,
-            repositoryParams: SimpleGalleryMediaRepository.Params,
-            monthTitle: LocalDate? = null,
-            albumUid: String? = null,
-        ): GallerySingleRepositoryFragment = GallerySingleRepositoryFragment().apply {
-            arguments = Bundle().apply {
-                putString(TITLE_ARG, title)
-                putSerializable(MONTH_TITLE_ARG, monthTitle)
-                putString(ALBUM_UID_ARG, albumUid)
-                putParcelable(REPO_PARAMS_ARG, repositoryParams)
-            }
-        }
+        fun getBundle() = Bundle()
     }
 }

@@ -560,7 +560,6 @@ class MediaViewerActivity : BaseActivity() {
         menu.findItem(R.id.add_to_album).isVisible = viewModel.areActionsEnabled
         menu.findItem(R.id.remove_from_album).isVisible =
             viewModel.areActionsEnabled && viewModel.canRemoveFromAlbum
-        menu.findItem(R.id.archive).isVisible = viewModel.areActionsEnabled
         menu.findItem(R.id.delete).isVisible = viewModel.areActionsEnabled
 
         with(menu.findItem(R.id.is_private)) {
@@ -610,13 +609,6 @@ class MediaViewerActivity : BaseActivity() {
 
         R.id.remove_from_album -> {
             viewModel.onRemoveFromAlbumClicked(
-                position = view.viewPager.currentItem
-            )
-            true
-        }
-
-        R.id.archive -> {
-            viewModel.onArchiveClicked(
                 position = view.viewPager.currentItem
             )
             true
@@ -1069,8 +1061,9 @@ class MediaViewerActivity : BaseActivity() {
 
     private fun openDeletingConfirmationDialog() {
         MaterialAlertDialogBuilder(this)
-            .setMessage(R.string.media_viewer_deleting_confirmation)
-            .setPositiveButton(R.string.delete) { _, _ ->
+            .setTitle(R.string.recycle_bin)
+            .setMessage(R.string.media_viewer_delete_to_recycle_bin)
+            .setPositiveButton(R.string.move_to_recycle_bin) { _, _ ->
                 viewModel.onDeletingGalleryMediaConfirmed()
             }
             .setNegativeButton(R.string.cancel, null)

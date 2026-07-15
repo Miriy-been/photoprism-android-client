@@ -54,6 +54,29 @@
 
     <PreferenceCategory
         app:iconSpaceReserved="false"
+        app:title="@string/recycle_bin">
+
+        <SwitchPreferenceCompat
+            app:iconSpaceReserved="false"
+            app:key="@string/pk_recycle_bin_auto_clear"
+            app:persistent="false"
+            app:summary="@string/recycle_bin_auto_clear_summary"
+            app:title="@string/recycle_bin_auto_clear_title"
+            app:widgetLayout="@layout/preference_material_switch" />
+
+        <ListPreference
+            app:dependency="@string/pk_recycle_bin_auto_clear"
+            app:iconSpaceReserved="false"
+            app:key="@string/pk_recycle_bin_auto_clear_days"
+            app:entries="@array/recycle_bin_auto_clear_days_entries"
+            app:entryValues="@array/recycle_bin_auto_clear_days_values"
+            app:persistent="false"
+            app:title="@string/recycle_bin_auto_clear_days_title" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
         app:title="@string/viewing_preferences">
 
         <ListPreference

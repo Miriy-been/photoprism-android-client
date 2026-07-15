@@ -33,6 +33,22 @@
             android:text="@string/sync_settings" />
     </LinearLayout>
 
+    <!-- 回收站 -->
+    <LinearLayout
+        android:id="@+id/more_recycle_bin"
+        style="@style/WabiMoreMenuItem"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            style="@style/WabiMoreMenuIcon"
+            android:src="@drawable/ic_delete" />
+
+        <TextView
+            style="@style/WabiMoreMenuText"
+            android:text="@string/recycle_bin" />
+    </LinearLayout>
+
     <!-- 自定义底部菜单栏 -->
     <LinearLayout
         android:id="@+id/more_customize_nav"
