@@ -71,7 +71,6 @@ class RecycleBinActivity : BaseActivity() {
     private val storagePermissionRequestLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission(),
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
             this::onStoragePermissionResult
         )
     private val downloadProgressView: DownloadProgressView by lazy {
@@ -699,7 +698,7 @@ class RecycleBinActivity : BaseActivity() {
     }
 
     private fun requestStoragePermission() {
-        storagePermissionRequestLauncher.launch(Unit)
+        storagePermissionRequestLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
 
     private fun onStoragePermissionResult(isGranted: Boolean) {

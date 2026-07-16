@@ -1,6 +1,6 @@
 package ua.com.radiokot.photoprism.features.recyclebin
 
-import org.koin.core.module.dsl.scopedOf
+import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.bind
@@ -19,7 +19,7 @@ val recycleBinFeatureModule = module {
         )
     } bind RecycleBinPreferences::class
 
-    scopedOf(::RestoreGalleryMediaUseCase)
-    scopedOf(::AutoClearRecycleBinUseCase)
+    factoryOf(::RestoreGalleryMediaUseCase)
+    factoryOf(::AutoClearRecycleBinUseCase)
     viewModelOf(::RecycleBinViewModel)
 }

@@ -120,35 +120,29 @@ class RecycleBinViewModel(
         initCommon()
 
         // Run auto-clear on initialization.
-        recycleBinPreferences.autoClearEnabled
-            .firstElement()
-            .flatMap { enabled ->
-                if (enabled) {
-                    recycleBinPreferences.autoClearDays.firstElement()
-                        .map { days -> if (days > 0) days else null }
-                } else {
-                    Observable.just(null).singleOrError()
-                }
-            }
-            .flatMapCompletable { retentionDays ->
-                if (retentionDays != null) {
-                    autoClearRecycleBinUseCase(retentionDays)
-                } else {
-                    Completable.complete()
-                }
-            }
-            .subscribeOn(Schedulers.io())
-            .subscribe(
-                { log.debug { "initOnce(): auto_clear_completed" } },
-                { error ->
-                    log.error(error) { "initOnce(): auto_clear_failed" }
-                }
-            )
-            .autoDispose(this)
+        val isAutoClearEnabled = recycleBinPreferences.autoClearEnabled.value ?: true
+        val retentionDays = if (isAutoClearEnabled) {
+            val days = recycleBinPreferences.autoClearDays.value ?: 30
+            if (days > 0) days else null
+        } else {
+            null
+        }
+
+        if (retentionDays != null) {
+            autoClearRecycleBinUseCase(retentionDays)
+                .subscribeOn(Schedulers.io())
+                .subscribe(
+                    { log.debug { "initOnce(): auto_clear_completed" } },
+                    { error ->
+                        log.error(error) { "initOnce(): auto_clear_failed" }
+                    }
+                )
+                .autoDispose(this)
+        }
 
         // Subscribe to local recycle bin item count.
         recycleBinDao.count()
-            .observeOnMain()
+            .observeOn(AndroidSchedulers.mainThread())
             .subscribe { count ->
                 log.debug {
                     "initOnce(): local_recycle_bin_count=$count"
@@ -462,6 +456,44 @@ class RecycleBinViewModel(
             onDownloadFinished = {
                 switchToViewing()
             }
+        )
+    }
+
+    fun onAddToFavoritesMultipleSelectionClicked() {
+        check(currentState is State.Selecting.ForUser) {
+            "Adding multiple selection to favorites button is only clickable when selecting"
+        }
+
+        check(canAddSelectedToFavorites) {
+            "Adding multiple selection to favorites button is only clickable when allowed"
+        }
+
+        galleryMediaRemoteActionsVM.updateGalleryMediaAttributes(
+            mediaUids = selectedMediaByUid.keys.toList(),
+            isFavorite = true,
+            currentMediaRepository = currentMediaRepository.checkNotNull {
+                "There must be a media repository to add items to favorites from"
+            },
+            onStarted = ::switchToViewing,
+        )
+    }
+
+    fun onRemoveFromFavoritesMultipleSelectionClicked() {
+        check(currentState is State.Selecting.ForUser) {
+            "Removing multiple selection from favorites button is only clickable when selecting"
+        }
+
+        check(canRemoveSelectedFromFavorites) {
+            "Removing multiple selection from favorites button is only clickable when allowed"
+        }
+
+        galleryMediaRemoteActionsVM.updateGalleryMediaAttributes(
+            mediaUids = selectedMediaByUid.keys.toList(),
+            isFavorite = false,
+            currentMediaRepository = currentMediaRepository.checkNotNull {
+                "There must be a media repository to remove items from favorites from"
+            },
+            onStarted = ::switchToViewing,
         )
     }
 
