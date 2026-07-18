@@ -4,6 +4,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
 import ua.com.radiokot.photoprism.extension.autoDispose
@@ -270,6 +271,53 @@ class AlbumsViewModel(
                 },
                 { error ->
                     log.error(error) { "createAlbum(): failed" }
+                    eventsSubject.onNext(Event.ShowFloatingLoadingFailedError)
+                }
+            )
+            .autoDispose(this)
+    }
+
+    fun deleteAlbum(albumUid: String) {
+        log.debug {
+            "deleteAlbum(): deleting_album:" +
+                    "\nalbumUid=$albumUid"
+        }
+
+        albumsRepository
+            .delete(albumUid)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                {
+                    log.debug { "deleteAlbum(): deleted" }
+                    eventsSubject.onNext(Event.ShowFloatingMessage("Album deleted"))
+                },
+                { error ->
+                    log.error(error) { "deleteAlbum(): failed" }
+                    eventsSubject.onNext(Event.ShowFloatingLoadingFailedError)
+                }
+            )
+            .autoDispose(this)
+    }
+
+    fun updateAlbum(albumUid: String, newTitle: String) {
+        log.debug {
+            "updateAlbum(): updating_album:" +
+                    "\nalbumUid=$albumUid," +
+                    "\nnewTitle=$newTitle"
+        }
+
+        albumsRepository
+            .update(albumUid, newTitle)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                {
+                    log.debug { "updateAlbum(): updated" }
+                    eventsSubject.onNext(Event.ShowFloatingMessage("Album name updated"))
+                },
+                { error ->
+                    log.error(error) { "updateAlbum(): failed" }
                     eventsSubject.onNext(Event.ShowFloatingLoadingFailedError)
                 }
             )

@@ -94,15 +94,27 @@ class ScanLocalFoldersUseCase(
 
     /**
      * Queries all folders that contain media files.
+     * Skips system directories (Android/) and hidden folders (. prefix)
+     * to match mainstream gallery behavior.
      * Uses HashMap for O(1) dedup, avoids iterating every file.
      * @return list of (bucketId, displayName, relativePath)
      */
     fun getAllMediaFolders(): List<Triple<String, String, String>> {
         val folders = LinkedHashMap<String, Triple<String, String, String>>()
-        val projection = arrayOf(
-            MediaStore.Images.Media.BUCKET_ID,
-            MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
-        )
+        val isApi29Plus = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        val projection = if (isApi29Plus) {
+            arrayOf(
+                MediaStore.Images.Media.BUCKET_ID,
+                MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
+                MediaStore.Images.Media.RELATIVE_PATH,
+            )
+        } else {
+            arrayOf(
+                MediaStore.Images.Media.BUCKET_ID,
+                MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
+                MediaStore.Images.Media.DATA,
+            )
+        }
 
         val uris = arrayOf(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -126,8 +138,28 @@ class ScanLocalFoldersUseCase(
                     val bucketId = cursor.getString(idIdx) ?: continue
                     if (folders.containsKey(bucketId)) continue
 
-                    val displayName = if (nameIdx >= 0) cursor.getString(nameIdx) else null
-                    folders[bucketId] = Triple(bucketId, displayName ?: bucketId, "")
+                    val displayName = if (nameIdx >= 0) cursor.getString(nameIdx) else null ?: continue
+                    val relativePath = if (isApi29Plus) {
+                        cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)) ?: ""
+                    } else {
+                        val data = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DATA))
+                        if (data != null) {
+                            data.substringAfter("/0/").substringBeforeLast("/") + "/"
+                        } else ""
+                    }
+
+                    // Skip system directories and hidden folders (mainstream gallery behavior)
+                    if (relativePath.contains("Android/") || displayName.startsWith(".")) {
+                        continue
+                    }
+
+                    // Skip root-level directories (e.g. "DCIM/", "Pictures/") —
+                    // real albums are always in subdirectories like "DCIM/Camera/"
+                    if (!relativePath.trimEnd('/').contains('/')) {
+                        continue
+                    }
+
+                    folders[bucketId] = Triple(bucketId, displayName, relativePath)
                 }
             }
         }
@@ -136,32 +168,33 @@ class ScanLocalFoldersUseCase(
     }
 
     /**
-     * Counts media files in specific folders.
+     * Counts media files in specific folders using batch queries.
+     * Uses IN clause to avoid N+1 queries — only 2 queries total (images + videos).
      */
     fun countMediaInFolders(bucketIds: Set<String>): Map<String, Int> {
         if (bucketIds.isEmpty()) return emptyMap()
 
-        val counts = mutableMapOf<String, Int>()
-        for (bucketId in bucketIds) {
-            counts[bucketId] = 0
-        }
-
+        val counts = bucketIds.associateWith { 0 }.toMutableMap()
         val uris = listOf(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
         )
         val projection = arrayOf(MediaStore.Images.Media.BUCKET_ID)
+        val placeholders = bucketIds.joinToString(", ") { "?" }
 
         for (uri in uris) {
-            for (bucketId in bucketIds) {
-                contentResolver.query(
-                    uri,
-                    projection,
-                    "${MediaStore.Images.Media.BUCKET_ID} = ?",
-                    arrayOf(bucketId),
-                    null,
-                )?.use { cursor ->
-                    counts[bucketId] = (counts[bucketId] ?: 0) + cursor.count
+            contentResolver.query(
+                uri,
+                projection,
+                "${MediaStore.Images.Media.BUCKET_ID} IN ($placeholders)",
+                bucketIds.toTypedArray(),
+                null,
+            )?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(MediaStore.Images.Media.BUCKET_ID)
+                if (idIdx < 0) return@use
+                while (cursor.moveToNext()) {
+                    val id = cursor.getString(idIdx) ?: continue
+                    counts[id] = (counts[id] ?: 0) + 1
                 }
             }
         }
@@ -176,8 +209,15 @@ class ScanLocalFoldersUseCase(
      *
      * The [displayName] is typically "Camera" and [relativePath] is "DCIM/Camera/".
      */
+    /**
+     * Finds the default camera folder by querying MediaStore for folders
+     * named "Camera" (English) or "相机" (Chinese). Returns null if not found,
+     * letting the user pick a folder manually — this is the mainstream approach.
+     */
     fun findDefaultCameraFolder(): Triple<String, String, String>? {
         refreshMediaStore()
+
+        val candidateNames = listOf("Camera", "相机")
         val uris = listOf(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
@@ -196,33 +236,37 @@ class ScanLocalFoldersUseCase(
             )
         }
 
-        // Try to find "Camera" folder first
-        val selection = "${MediaStore.Images.Media.BUCKET_DISPLAY_NAME} = ?"
-        val selectionArgs = arrayOf("Camera")
-
-        for (uri in uris) {
-            contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val bucketId = cursor.getString(0) ?: continue
-                    val displayName = cursor.getString(1) ?: "Camera"
-                    val relativePath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        cursor.getString(2) ?: "DCIM/Camera/"
-                    } else {
-                        val data = cursor.getString(2)
-                        if (data != null) {
-                            val rel = data.substringAfter("/0/").substringBeforeLast("/")
-                            "$rel/"
+        for (folderName in candidateNames) {
+            val selection = "${MediaStore.Images.Media.BUCKET_DISPLAY_NAME} = ?"
+            val selectionArgs = arrayOf(folderName)
+            for (uri in uris) {
+                contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val bucketId = cursor.getString(0) ?: continue
+                        val displayName = cursor.getString(1) ?: folderName
+                        val relativePath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            cursor.getString(2) ?: "DCIM/$folderName/"
                         } else {
-                            "DCIM/Camera/"
+                            val data = cursor.getString(2)
+                            if (data != null) {
+                                val rel = data.substringAfter("/0/").substringBeforeLast("/")
+                                "$rel/"
+                            } else {
+                                "DCIM/$folderName/"
+                            }
                         }
+                        log.info {
+                            "findDefaultCameraFolder(): found " +
+                                    "folderName=$folderName, " +
+                                    "bucketId=$bucketId, relativePath=$relativePath"
+                        }
+                        return Triple(bucketId, displayName, relativePath)
                     }
-                    log.info { "findDefaultCameraFolder(): found bucketId=$bucketId, relativePath=$relativePath" }
-                    return Triple(bucketId, displayName, relativePath)
                 }
             }
         }
 
-        log.warn { "findDefaultCameraFolder(): no Camera folder found via MediaStore" }
+        log.warn { "findDefaultCameraFolder(): no Camera folder found, user will pick manually" }
         return null
     }
 
@@ -381,12 +425,28 @@ class ScanLocalFoldersUseCase(
         }
 
         return runBlocking {
+            // Batch query: collect all mediaStoreIds and filePaths,
+            // query synced_files once each, diff in memory.
+            val mediaStoreIds = existingItems.mapNotNull { it.mediaStoreId }
+            val completedIds: Set<Long> = if (mediaStoreIds.isNotEmpty()) {
+                syncedFileDao.getCompletedMediaStoreIds(mediaStoreIds).toSet()
+            } else {
+                emptySet()
+            }
+
+            val allPaths = existingItems.map { it.filePath }
+            val completedPaths: Set<String> = if (allPaths.isNotEmpty()) {
+                syncedFileDao.getCompletedPaths(allPaths).toSet()
+            } else {
+                emptySet()
+            }
+
             var count = 0
             for (item in existingItems) {
                 val exists = if (item.mediaStoreId != null) {
-                    syncedFileDao.countByMediaStoreId(item.mediaStoreId) > 0
+                    item.mediaStoreId in completedIds
                 } else {
-                    syncedFileDao.countByPathAndDate(item.filePath, item.dateModified) > 0
+                    item.filePath in completedPaths
                 }
                 if (!exists) count++
             }
@@ -464,11 +524,26 @@ class ScanLocalFoldersUseCase(
         }
 
         return runBlocking {
+            // Batch query: avoid N+1 by querying synced_files in 2 queries.
+            val mediaStoreIds = existingItems.mapNotNull { it.mediaStoreId }
+            val completedIds: Set<Long> = if (mediaStoreIds.isNotEmpty()) {
+                syncedFileDao.getCompletedMediaStoreIds(mediaStoreIds).toSet()
+            } else {
+                emptySet()
+            }
+
+            val allPaths = existingItems.map { it.filePath }
+            val completedPaths: Set<String> = if (allPaths.isNotEmpty()) {
+                syncedFileDao.getCompletedPaths(allPaths).toSet()
+            } else {
+                emptySet()
+            }
+
             existingItems.filter { item ->
                 val exists = if (item.mediaStoreId != null) {
-                    syncedFileDao.countByMediaStoreId(item.mediaStoreId) > 0
+                    item.mediaStoreId in completedIds
                 } else {
-                    syncedFileDao.countByPathAndDate(item.filePath, item.dateModified) > 0
+                    item.filePath in completedPaths
                 }
                 !exists
             }

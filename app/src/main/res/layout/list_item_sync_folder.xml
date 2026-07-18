@@ -30,9 +30,20 @@
             tools:text="Camera" />
 
         <TextView
+            android:id="@+id/tv_total_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textColor="@color/wabi_accent"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            tools:text="3,218 张" />
+
+        <TextView
             android:id="@+id/tv_folder_path"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
             android:textColor="@color/wabi_text_secondary"
             android:textSize="12sp"
             tools:text="/DCIM/Camera/" />

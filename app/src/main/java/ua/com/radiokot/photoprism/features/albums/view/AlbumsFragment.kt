@@ -219,6 +219,11 @@ class AlbumsFragment : Fragment(), AndroidScopeComponent {
                     viewModel.onAlbumItemClicked(item)
                     true
                 }
+
+                onLongClickListener = { _, _, item: AlbumListItem, _ ->
+                    onAlbumItemLongClicked(item)
+                    true
+                }
             }
 
             layoutManager = object : GridLayoutManager(context, spanCount) {
@@ -388,6 +393,67 @@ class AlbumsFragment : Fragment(), AndroidScopeComponent {
                 val albumName = inputEditText.text.toString()
                 if (albumName.isNotBlank()) {
                     viewModel.createAlbum(albumName)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun onAlbumItemLongClicked(item: AlbumListItem): Boolean {
+        log.debug {
+            "onAlbumItemLongClicked(): item_long_clicked:" +
+                    "\nitem=$item"
+        }
+
+        val album = item.source ?: return false
+
+        showAlbumActionsBottomSheet(album.uid, album.title)
+        return true
+    }
+
+    private fun showAlbumActionsBottomSheet(albumUid: String, albumTitle: String) {
+        val bottomSheet = AlbumActionsBottomSheet.newInstance()
+
+        bottomSheet.onEditNameClicked = {
+            showEditAlbumNameDialog(albumUid, albumTitle)
+        }
+
+        bottomSheet.onDownloadZipClicked = {
+            // Download ZIP is not available from the album list view.
+        }
+
+        bottomSheet.onDeleteClicked = {
+            showDeleteAlbumConfirmation(albumUid, albumTitle)
+        }
+
+        bottomSheet.showNow(childFragmentManager, AlbumActionsBottomSheet.TAG)
+    }
+
+    private fun showDeleteAlbumConfirmation(albumUid: String, albumTitle: String) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.delete_album_confirmation)
+            .setMessage(getString(R.string.delete_album_confirmation_message, albumTitle))
+            .setPositiveButton(R.string.delete) { _, _ ->
+                viewModel.deleteAlbum(albumUid)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showEditAlbumNameDialog(albumUid: String, currentName: String) {
+        val inputEditText = EditText(requireContext()).apply {
+            hint = getString(R.string.enter_album_name)
+            setText(currentName)
+            requestFocus()
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.edit_album)
+            .setView(inputEditText)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val newName = inputEditText.text.toString()
+                if (newName.isNotBlank()) {
+                    viewModel.updateAlbum(albumUid, newName)
                 }
             }
             .setNegativeButton(R.string.cancel, null)

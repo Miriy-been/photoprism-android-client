@@ -36,6 +36,7 @@ data class FolderItem(
     val displayName: String,
     val relativePath: String,
     val isEnabled: Boolean,
+    val totalCount: Int = 0,
     val pendingCount: Int = 0,
 )
 
@@ -147,10 +148,95 @@ class SyncSettingsViewModel(
     fun loadData() {
         loadDataDisposable?.dispose()
         loadDataDisposable = Single.fromCallable {
-            val enabledFolders = runBlocking {
+            // 1. Get all folders from MediaStore
+            val allMediaFolders = scanLocalFoldersUseCase.getAllMediaFolders()
+
+            // 2. Get enabled folders from DB
+            val enabledDbFolders = runBlocking {
                 syncFolderDao.getEnabledFolders()
             }
-            val items = enabledFolders.map { folder ->
+            // Build a set of matchable bucketIds (strip "auto:" prefix for auto-detected folders)
+            val enabledBucketIds = enabledDbFolders.map { it.bucketId }.toSet()
+            val matchableEnabledIds = enabledDbFolders
+                .map { it.bucketId.removePrefix("auto:") }
+                .toSet()
+
+            // 3. Get total counts for all MediaStore folders
+            val allBucketIds = allMediaFolders.map { it.first }.toSet()
+            val totalCounts = scanLocalFoldersUseCase.countMediaInFolders(allBucketIds)
+
+            // 4. Build FolderItem for all MediaStore folders
+            val mediaStoreItems = allMediaFolders.map { (bucketId, displayName, relativePath) ->
+                val isEnabled = bucketId in enabledBucketIds || bucketId in matchableEnabledIds
+                val totalCount = totalCounts[bucketId] ?: 0
+                val pendingCount = if (isEnabled) {
+                    runBlocking {
+                        scanLocalFoldersUseCase.countNewFilesByPath(relativePath, syncedFileDao)
+                    }
+                } else {
+                    0
+                }
+                FolderItem(
+                    bucketId = bucketId,
+                    displayName = displayName,
+                    relativePath = relativePath,
+                    isEnabled = isEnabled,
+                    totalCount = totalCount,
+                    pendingCount = pendingCount,
+                )
+            }.toMutableList()
+
+            // Filter out folders with < 3 files (non-album noise, mainstream gallery behavior)
+            mediaStoreItems.removeAll { it.totalCount < 3 }
+
+            // 5. Auto-enable Camera folder on first use (no DB folders configured yet)
+            val hasEnabledFolders = enabledBucketIds.isNotEmpty()
+            if (!hasEnabledFolders) {
+                val defaultCamera = scanLocalFoldersUseCase.findDefaultCameraFolder()
+                if (defaultCamera != null) {
+                    val (camBucketId, _, _) = defaultCamera
+                    // Mark the Camera folder as enabled in the list
+                    mediaStoreItems.firstOrNull { it.bucketId == camBucketId }?.let { item ->
+                        val idx = mediaStoreItems.indexOf(item)
+                        if (idx >= 0) {
+                            val pendingCount = runBlocking {
+                                scanLocalFoldersUseCase.countNewFilesByPath(item.relativePath, syncedFileDao)
+                            }
+                            mediaStoreItems[idx] = item.copy(
+                                isEnabled = true,
+                                pendingCount = pendingCount,
+                            )
+                        }
+                    }
+                    // Also upsert into DB so subsequent loads persist the choice
+                    runBlocking {
+                        val existing = syncFolderDao.getByBucketId(camBucketId)
+                        if (existing == null) {
+                            syncFolderDao.upsert(
+                                SyncFolder(
+                                    bucketId = camBucketId,
+                                    displayName = defaultCamera.second,
+                                    relativePath = defaultCamera.third,
+                                    isEnabled = true,
+                                    lastSyncAt = null,
+                                )
+                            )
+                            log.info {
+                                "loadData(): auto-enabled Camera folder " +
+                                        "bucketId=$camBucketId"
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 6. Handle SAF-selected folders not in MediaStore (e.g. tree URIs)
+            val mediaStoreBucketIds = allMediaFolders.map { it.first }.toSet()
+            val extraDbFolders = enabledDbFolders.filter { dbFolder ->
+                val cleanId = dbFolder.bucketId.removePrefix("auto:")
+                cleanId !in mediaStoreBucketIds
+            }
+            val extraItems = extraDbFolders.map { folder ->
                 val pendingCount = runBlocking {
                     scanLocalFoldersUseCase.countNewFilesByPath(folder.relativePath, syncedFileDao)
                 }
@@ -158,23 +244,34 @@ class SyncSettingsViewModel(
                     bucketId = folder.bucketId,
                     displayName = folder.displayName,
                     relativePath = folder.relativePath,
-                    isEnabled = folder.isEnabled,
+                    isEnabled = true,
+                    totalCount = 0, // can't determine from MediaStore
                     pendingCount = pendingCount,
                 )
             }
-            val enabledBucketIds = enabledFolders.map { it.bucketId }
+
+            // 7. Combine: enabled first (sorted by totalCount desc), then disabled, then extras
+            val allItems = (mediaStoreItems + extraItems).sortedWith(
+                compareByDescending<FolderItem> { it.isEnabled }
+                    .thenByDescending { it.totalCount }
+            )
+
+            // 8. Compute summary counts
             val synced = if (enabledBucketIds.isNotEmpty()) {
-                runBlocking { syncedFileDao.getCountByBucketIds(enabledBucketIds) }
+                runBlocking { syncedFileDao.getCountByBucketIds(enabledBucketIds.toList()) }
             } else {
                 0
             }
-            val pending = items.sumOf { it.pendingCount }
-            Triple(items, synced, pending)
+            val pending = allItems
+                .filter { it.isEnabled }
+                .sumOf { it.pendingCount }
+
+            Triple(allItems, synced, pending)
         }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ (items, synced, pending) ->
-                log.debug { "loadData(): loaded folders=${items.size} synced=$synced pending=$pending" }
+                log.debug { "loadData(): loaded all=${items.size} synced=$synced pending=$pending" }
                 errorEvent.onNext("")
                 folders.onNext(items)
                 totalSyncedCount.onNext(synced)
@@ -284,65 +381,6 @@ class SyncSettingsViewModel(
             }, { error ->
                 log.error(error) { "resyncAll(): failed" }
                 errorEvent.onNext(error.message ?: "Failed to reset sync state")
-            })
-            .addTo(disposables)
-    }
-
-    /**
-     * Automatically adds the default camera folder if no sync folders exist.
-     * Called after the user grants MediaStore permissions for the first time.
-     * Queries MediaStore for the "Camera" folder (usually DCIM/Camera).
-     */
-    fun autoAddDefaultFolderIfNeeded() {
-        Single.fromCallable {
-            runBlocking {
-                // Only auto-add if no folders are configured
-                if (syncFolderDao.countEnabled() > 0) {
-                    log.debug { "autoAddDefaultFolderIfNeeded(): folders_exist, skipping" }
-                    return@runBlocking false
-                }
-            }
-
-            val cameraFolder = scanLocalFoldersUseCase.findDefaultCameraFolder()
-            if (cameraFolder != null) {
-                val (bucketId, displayName, relativePath) = cameraFolder
-                // Use a distinguishable prefix for auto-detected folders
-                val autoBucketId = "auto:$bucketId"
-
-                runBlocking {
-                    val existing = syncFolderDao.getByBucketId(autoBucketId)
-                    if (existing == null) {
-                        syncFolderDao.upsert(
-                            SyncFolder(
-                                bucketId = autoBucketId,
-                                displayName = displayName,
-                                relativePath = relativePath,
-                                isEnabled = true,
-                                lastSyncAt = null,
-                            )
-                        )
-                        log.info {
-                            "autoAddDefaultFolderIfNeeded(): added " +
-                                    "displayName=$displayName, relativePath=$relativePath"
-                        }
-                        true
-                    } else {
-                        false
-                    }
-                }
-            } else {
-                log.warn { "autoAddDefaultFolderIfNeeded(): no_default_folder_found" }
-                false
-            }
-        }
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ added ->
-                if (added) {
-                    loadData()
-                }
-            }, { error ->
-                log.error(error) { "autoAddDefaultFolderIfNeeded(): failed" }
             })
             .addTo(disposables)
     }

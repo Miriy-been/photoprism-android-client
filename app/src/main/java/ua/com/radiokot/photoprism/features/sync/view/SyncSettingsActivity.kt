@@ -51,8 +51,6 @@ class SyncSettingsActivity : BaseActivity() {
                     openFolderPickerInternal()
                 }
                 viewModel.loadData()
-                // Auto-add the default camera folder if no folders configured
-                viewModel.autoAddDefaultFolderIfNeeded()
                 // Trigger pending sync if user clicked "Sync now" before granting permissions
                 if (pendingSyncNow) {
                     pendingSyncNow = false
@@ -92,6 +90,11 @@ class SyncSettingsActivity : BaseActivity() {
 
         initViews()
         checkPermissions()
+        // When permissions are already granted (e.g. auto-granted by the system),
+        // the permission callback never fires, so loadData must be triggered here.
+        if (checkPermissions(showDeniedSnackbar = false)) {
+            viewModel.loadData()
+        }
         subscribeToViewModel()
     }
 
@@ -455,14 +458,14 @@ class SyncSettingsActivity : BaseActivity() {
         }
     }
 
-    private fun renderFolderTags(enabledFolders: List<FolderItem>) {
+    private fun renderFolderTags(folders: List<FolderItem>) {
         val container = binding.llFolderTags
         // Remove all views except tv_no_folders
         for (i in container.childCount - 1 downTo 1) {
             container.removeViewAt(i)
         }
 
-        if (enabledFolders.isEmpty()) {
+        if (folders.isEmpty()) {
             binding.tvNoFolders.visibility = View.VISIBLE
             binding.tvFolderHint.visibility = View.VISIBLE
             return
@@ -471,26 +474,30 @@ class SyncSettingsActivity : BaseActivity() {
         binding.tvNoFolders.visibility = View.GONE
         binding.tvFolderHint.visibility = View.GONE
 
-        for (folder in enabledFolders) {
+        for (folder in folders) {
             val chipLayout = LayoutInflater.from(this)
                 .inflate(R.layout.list_item_sync_folder, container, false) as ViewGroup
 
             val tvName = chipLayout.findViewById<TextView>(R.id.tv_folder_name)
             val tvPath = chipLayout.findViewById<TextView>(R.id.tv_folder_path)
+            val tvTotal = chipLayout.findViewById<TextView>(R.id.tv_total_count)
             val tvBadge = chipLayout.findViewById<TextView>(R.id.tv_pending_badge)
             val cb = chipLayout.findViewById<com.google.android.material.checkbox.MaterialCheckBox>(R.id.cb_enabled)
 
             tvName.text = folder.displayName
             tvPath.text = folder.relativePath
+            tvTotal.text = resources.getString(R.string.sync_folder_total_format, folder.totalCount)
 
-            cb.isChecked = true
+            cb.isChecked = folder.isEnabled
             cb.setOnCheckedChangeListener { _, isChecked ->
-                if (!isChecked) {
+                if (isChecked) {
+                    viewModel.addSelectedFolder(folder.bucketId, folder.displayName, folder.relativePath)
+                } else {
                     viewModel.removeFolder(folder.bucketId, folder.displayName)
                 }
             }
 
-            if (folder.pendingCount > 0) {
+            if (folder.pendingCount > 0 && folder.isEnabled) {
                 tvBadge.visibility = View.VISIBLE
                 tvBadge.text = resources.getQuantityString(R.plurals.sync_pending_badge, folder.pendingCount, folder.pendingCount)
             } else {

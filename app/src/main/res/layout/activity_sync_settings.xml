@@ -124,7 +124,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Selected Folders -->
+            <!-- All Albums Section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -136,7 +136,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/sync_selected_folders"
+                    android:text="@string/sync_all_albums"
                     android:textColor="@color/wabi_text_primary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -178,7 +178,7 @@
                         android:id="@+id/tv_no_folders"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/sync_no_folders"
+                        android:text="@string/sync_all_albums_hint"
                         android:textColor="@color/wabi_text_secondary"
                         android:textSize="13sp" />
 

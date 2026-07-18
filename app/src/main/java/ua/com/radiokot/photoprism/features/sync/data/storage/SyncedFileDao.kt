@@ -27,6 +27,12 @@ interface SyncedFileDao {
     @Query("SELECT COUNT(*) FROM synced_files WHERE bucketId IN (:bucketIds) AND status = 'completed'")
     suspend fun getCountByBucketIds(bucketIds: List<String>): Int
 
+    @Query("SELECT mediaStoreId FROM synced_files WHERE mediaStoreId IN (:ids) AND status = 'completed'")
+    suspend fun getCompletedMediaStoreIds(ids: List<Long>): List<Long>
+
+    @Query("SELECT filePath FROM synced_files WHERE filePath IN (:paths) AND status = 'completed'")
+    suspend fun getCompletedPaths(paths: List<String>): List<String>
+
     @Query("UPDATE synced_files SET status = 'completed' WHERE filePath IN (:filePaths)")
     suspend fun markCompleted(filePaths: List<String>)
 

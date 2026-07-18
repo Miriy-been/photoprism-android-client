@@ -2,6 +2,7 @@ package ua.com.radiokot.photoprism.features.gallery.view
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -169,6 +170,16 @@ class GalleryActivity : BaseActivity() {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             this::onStoragePermissionResult
         )
+    private val mediaStoreReadPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { results ->
+            val allGranted = results.values.all { it }
+            if (allGranted) {
+                log.debug { "mediaStoreReadPermissionLauncher: all_granted" }
+                checkSyncOnResume()
+            }
+        }
     private val webViewerForRedirectHandlingLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
         this::onWebViewerRedirectHandlingResult,
@@ -1124,6 +1135,36 @@ class GalleryActivity : BaseActivity() {
         viewModel.onStoragePermissionResult(isGranted)
     }
 
+    /**
+     * Requests MediaStore read permission if not yet granted.
+     * This is called on first app launch so the sync feature can access
+     * local photos without requiring the user to first visit Sync Settings.
+     *
+     * On Android 13+ this requests READ_MEDIA_IMAGES + READ_MEDIA_VIDEO.
+     * On older versions this requests READ_EXTERNAL_STORAGE.
+     */
+    private fun requestMediaStoreReadPermissionIfNeeded() {
+        val permissions = mediaStoreReadPermissions()
+        if (permissions.any {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }) {
+            log.info { "requestMediaStoreReadPermissionIfNeeded: permissions_missing, requesting" }
+            mediaStoreReadPermissionLauncher.launch(permissions)
+        }
+    }
+
+    private fun mediaStoreReadPermissions(): Array<String> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO,
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+            )
+        }
+
     private fun goToWelcomeScreen() {
         log.debug {
             "goToWelcomeScreen(): going_to_welcome_screen"
@@ -1232,6 +1273,9 @@ class GalleryActivity : BaseActivity() {
             viewModel.onScreenResumedAfterMovedBackWithBackButton()
         }
         checkSyncOnResume()
+        // Proactively request MediaStore read permission so sync can scan
+        // local photos without requiring the user to first visit Sync Settings.
+        requestMediaStoreReadPermissionIfNeeded()
     }
 
     private fun checkSyncOnResume() {

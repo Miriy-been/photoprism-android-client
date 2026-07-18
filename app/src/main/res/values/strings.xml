@@ -273,6 +273,9 @@
     <string name="sync_pending">待同步</string>
     <string name="sync_choose_folders">选择要同步的文件夹</string>
     <string name="sync_selected_folders">已选文件夹</string>
+    <string name="sync_all_albums">所有相册</string>
+    <string name="sync_all_albums_hint">勾选需要同步的相册</string>
+    <string name="sync_folder_total_format">%d 张</string>
     <string name="sync_add_folder">添加文件夹</string>
     <string name="sync_no_folders">尚未选择文件夹，点击「添加文件夹」开始</string>
     <string name="sync_folder_hint">照片通常存放在 DCIM/Camera 或 Pictures 目录下</string>
